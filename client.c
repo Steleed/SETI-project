@@ -14,13 +14,15 @@ int main(){
     client_id *id=malloc(sizeof(client_id));
     strncpy(id->ID, "A.Malesa", 8); //Identificativo client
     id->ID[8] = '\0';
-    strncpy(id->PORT, "5000", 4); //Porta UDP client
+    strncpy(id->PORT, "5000", 5); //Porta UDP client
     int p;
     do {
-        scanf("Inserisci la password ((un numero compreso tra 0 e 65535)", &p);
+        printf("Inserisci la password ((un numero compreso tra 0 e 65535): ");
+        scanf("%d", &p);
     }
     while (!check_MPD(p));
     id->MDP=p; //Password client
+    system("clear");
     
 
     /*if (connect(sock, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
@@ -39,11 +41,13 @@ int main(){
             //TODO registrazione
             connection(sock1, id);
             break;
+        case 3:
+            //TODO IQUIT
         default:
             puts("ERRORE! Numero digitato fuori dal range consentito.");
             return EXIT_FAILURE;
         }
-
+        
     int choice;
     while (1){
         choice=print_menu();
