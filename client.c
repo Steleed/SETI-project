@@ -2,19 +2,16 @@
 #include <stdio.h>
 #include "project.h"
 
-int main(){
-    //Struct + socket per inviare messaggi sulla porta TCP
-    struct sockaddr_in address_sock_tcp;
-    address_sock_tcp.sin_family=AF_INET;
-    address_sock_tcp.sin_port=htons(6769);
-    //TODO prendere l'ip del server
-    int sock1=socket(PF_INET, SOCK_STREAM, 0);
-
+int main(int argc, char* argv[]){
     //Creazione struct identificatore cliente
     client_id *id=malloc(sizeof(client_id));
-    strncpy(id->ID, "A.Malesa", 8); //Identificativo client
-    id->ID[8] = '\0';
-    strncpy(id->PORT, "5000", 5); //Porta UDP client
+    if (!check_args(argc, argv)){
+        fprintf(stderr, "Errore argomenti\n\n\t-i: IMMETTI IL TUO ID\n\n\t-p: IMMETTI LA TUA PORTA UDP\n");
+        return EXIT_FAILURE;
+    }
+    //TODO check -i -p
+    strcpy(id->ID, argv[1]); //Identificativo client
+    strcpy(id->PORT, argv[2]); //Porta UDP client
     int p;
     do {
         printf("Inserisci la password ((un numero compreso tra 0 e 65535): ");
@@ -25,10 +22,25 @@ int main(){
     system("clear");
     
 
-    /*if (connect(sock, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
+    //Struct + socket per inviare messaggi sulla porta TCP
+    struct sockaddr_in address_sock_tcp;
+    address_sock_tcp.sin_family=AF_INET;
+    address_sock_tcp.sin_port=htons(6769);
+    //TODO prendere l'ip del server
+    inet_aton("127.0.0.1", &address_sock_tcp.sin_addr);
+    int sock1=socket(PF_INET, SOCK_STREAM, 0);
+
+    puts("Connessione al server");
+    sleep(1.5);
+    if (connect(sock1, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
         perror("Errore di connessione");
         return EXIT_FAILURE;
-    }*/
+    }
+    else{
+        puts("Connessione stabilita");
+        sleep(1);
+        system("clear");
+    }
 
     int start=print_intro();
     switch (start)
@@ -42,12 +54,14 @@ int main(){
             connection(sock1, id);
             break;
         case 3:
-            //TODO IQUIT
+            return EXIT_SUCCESS;
         default:
-            puts("ERRORE! Numero digitato fuori dal range consentito.");
+            fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");
             return EXIT_FAILURE;
         }
-        
+    
+    /*sleep(2);
+    system("clear");*/
     int choice;
     while (1){
         choice=print_menu();

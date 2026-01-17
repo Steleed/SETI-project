@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+bool check_args(int argc, char* argv[]){
+    return (argc == 3 && strlen(argv[1])==LENGTH_ID && strlen(argv[2])==LENGTH_UDP_PORT);
+}
+
 bool check_MPD(const int p){
     return (p>=0 && p<=65535);
 }
@@ -21,43 +25,26 @@ int print_menu(){
 }
 
 char* build_message_reg(const client_id *id){
-    char *mess=malloc(LENGTH_HEADER+LENGTH_ID+1+LENGTH_UDP_PORT+1+2/*+mdp*/+LENGTH_END_SYMBOL+1); //+1 finale per '\0'
-    int i;
-    for (i=0; i<LENGTH_HEADER; i++){
-        mess[i]=REGIS_HEADER[i];
-    }
-    for (int c=0; c<LENGTH_ID; c++){
-        mess[i]=id->ID[c];
-        i++;
-    }
-    mess[i]=' ';
-    i++;
-    for (int c=0; c<LENGTH_UDP_PORT; c++){
-        mess[i]=id->PORT[c];
-        i++;
-    }
-    mess[i]=' ';
-    i++;
-    mess[i]=id->MDP & 255 /*1111 1111*/; //primo byte
-    i++;
-    mess[i]=(id->MDP >> 8) & 255 /*1111 1111*/; //secondo byte
-    i++;
-    for (int c=0; c<LENGTH_END_SYMBOL; c++){
-        mess[i]=END_SYMBOL[c];
-        i++;
-    }
-    mess[i]='\0';
+    char *mess=malloc(LENGTH_HEADER+LENGTH_ID+1+LENGTH_UDP_PORT+1+2+LENGTH_END_SYMBOL); //+1 finale per '\0'
+    uint16_t littleEndian=htole16(id->MDP);
+    printf("MDP in little-endian: %02X %02X\n", littleEndian & 0xFF, (littleEndian >> 8) & 0xFF);
+    sprintf(mess, "%s%s %s ", REGIS_HEADER, id->ID, id->PORT);
+    int i=strlen(mess);
+    mess[i]=(littleEndian >> 8) & 255;
+    mess[i++]=littleEndian & 255;
+    memcpy(mess+i+1, END_SYMBOL, 3);
+    //TODO mettere la password in little-endian
+    
     return mess;
 }
 
 void registration(int fd, const client_id *id){
     char *mess=build_message_reg(id);
-    printf("DEBUG: messaggio registrazione\n%s\n\n", mess);
-    /*write(fd, mess, strlen(mess));
+    write(fd, mess, MAX_REGIS_HEADER);
     char buf[10];
     int r=read(fd, buf, 9);
     buf[r]='\0';
-    printf("%s\n", buf);*/
+    printf("%s\n", buf);
 }
 
 char *build_message_conn(const client_id *id){
