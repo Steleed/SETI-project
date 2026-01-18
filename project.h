@@ -1,9 +1,10 @@
 #ifndef PROJECT_H
 #define PROJECT_H
 
-#include "client.h"
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <stdint.h>
 #include <pthread.h>
 #include <string.h>
 #include <time.h>
@@ -16,7 +17,8 @@
 #define LENGTH_END_SYMBOL 3 //Lunghezza simbolo terminale per messaggi TCP
 #define LENGTH_HEADER 6 //Lunghezza instestazioni
 #define REGIS_HEADER "REGIS " //Intestazione per la registrazione
-#define MAX_REGIS_HEADER 25 //Lunghezza massima header registrazione
+#define LENGTH_REGIS 25 //Lunghezza messaggio registrazione
 #define CONNE_HEADER "CONNE " //Intestazione per la connessione
+#define LENGTH_CONNE 20 //Lunghezza messaggio connessione
 
 #endif
