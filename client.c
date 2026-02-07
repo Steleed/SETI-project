@@ -7,7 +7,7 @@ int main(int argc, char* argv[]){
     //Creazione struct identificatore cliente
     client_id *id=malloc(sizeof(client_id));
     if (!check_args(argc, argv, id)){
-        fprintf(stderr, "Errore argomenti\n\n\t-i: IMMETTI IL TUO ID (8 caratteri)\n\n\t-p: IMMETTI LA TUA PORTA UDP (4 caratteri, inferiore a 9999)\n");
+        fprintf(stderr, "Errore argomenti\n\n\t-i: IMMETTI IL TUO ID (8 caratteri)\n\n\t-p: IMMETTI LA TUA PORTA UDP (4 caratteri, inferiore a 9999,\n\t  completata con degli 0 all'inizio se necessario)\n");
         free(id);
         return EXIT_FAILURE;
     }
@@ -22,26 +22,11 @@ int main(int argc, char* argv[]){
     system("clear");
     
 
-    //Struct + socket per inviare messaggi sulla porta TCP
-    struct sockaddr_in address_sock_tcp;
-    address_sock_tcp.sin_family=AF_INET;
-    address_sock_tcp.sin_port=htons(6769);
-    //TODO prendere l'ip del server
-    inet_aton("127.0.0.1", &address_sock_tcp.sin_addr);
-    id->fdTCP=socket(PF_INET, SOCK_STREAM, 0);
-
-    puts("Connessione al server");
-    sleep(1.5);
-    if (connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
-        perror("Errore di connessione");
-        free(id);
-        return EXIT_FAILURE;
-    }
-    else{
-        puts("Connessione stabilita");
-        sleep(1);
-        system("clear");
-    }
+    //Socket + connessione per inviare messaggi sulla porta TCP
+    if (tcpSock(id) == -1)  return EXIT_FAILURE;
+    //Socket + binding per ricevere notifiche su porta UDP
+    if (udpSock(id) == -1)  return EXIT_FAILURE;
+    pthread_mutex_init(&id->mtx, NULL); //Inizializzazione mutex
 
     int start=print_intro();
     switch (start)
@@ -55,22 +40,13 @@ int main(int argc, char* argv[]){
             connection(id);
             break;
         case 3:
+            free(id);
             return EXIT_SUCCESS;
         default:
             fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");
+            free(id);
             return EXIT_FAILURE;
         }
-    
-    id->fdUDP=socket(PF_INET, SOCK_DGRAM, 0);
-    struct sockaddr_in address_sock_udp;
-    address_sock_udp.sin_family=AF_INET;
-    address_sock_udp.sin_port=htons(atoi(id->PORT));
-    address_sock_udp.sin_addr.s_addr=htonl(INADDR_ANY);
-    if(bind(id->fdUDP,(struct sockaddr *)&address_sock_udp,sizeof(struct sockaddr_in)) == EOF){
-        perror("Errore binding udp");
-        free(id);
-        return EXIT_FAILURE;
-    }
 
     pthread_t th1;
     pthread_create(&th1,NULL,udp_listen,id);
@@ -78,19 +54,23 @@ int main(int argc, char* argv[]){
     sleep(2);
     system("clear");
     int choice;
-    while (1){
+    while (1){            
+        //!Mutex?
+        //Controllo notifiche udp
+        pthread_mutex_lock(&id->mtx);
         if (id->notifications>0){
             printf("Hai %d notifiche\n", id->notifications);
-            //!Mutex?
-            id->notifications=0;
         }
+        pthread_mutex_unlock(&id->mtx);
         sleep(2);
         system("clear");
+
         choice=print_menu();
         switch (choice)
         {
         case 1: 
             //TODO amiciaiza
+            friend(id);
             continue;
         case 2:
             //TODO messaggio

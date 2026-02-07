@@ -20,5 +20,7 @@
 #define LENGTH_REGIS 25 //Lunghezza messaggio registrazione
 #define CONNE_HEADER "CONNE " //Intestazione per la connessione
 #define LENGTH_CONNE 20 //Lunghezza messaggio connessione
+#define FRIE_HEADER "FRIE? "
+#define LENGTH_FRIE 17 //Lunghezza messaggio amicizia
 
 #endif
