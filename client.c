@@ -12,11 +12,15 @@ int main(int argc, char* argv[]){
         return EXIT_FAILURE;
     }
     int p;
+    char *tmp=malloc(100*sizeof(char));
     do {
         printf("Inserisci la password ((un numero compreso tra 0 e 65535): ");
-        scanf("%d", &p);
+        //scanf("%d", &p);
+        fgets(tmp, 100, stdin);
+        p=atoi(tmp);
     }
     while (!check_MPD(&p));
+    free(tmp);
     id->MDP=htole16(p); //Password client
     id->notifications=0;
     system("clear");
@@ -26,8 +30,10 @@ int main(int argc, char* argv[]){
     if (tcpSock(id) == -1)  return EXIT_FAILURE;
     //Socket + binding per ricevere notifiche su porta UDP
     if (udpSock(id) == -1)  return EXIT_FAILURE;
+    
     pthread_mutex_init(&id->mtx, NULL); //Inizializzazione mutex
-
+    
+    
     int start=print_intro();
     switch (start)
         {
@@ -36,12 +42,12 @@ int main(int argc, char* argv[]){
             registration(id);
             break;
         case 2:
-            //TODO registrazione
+            //TODO connessione
             connection(id);
             break;
         case 3:
-            free(id);
-            return EXIT_SUCCESS;
+            //TODO iquit
+            iquit(id);
         default:
             fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");
             free(id);
@@ -51,10 +57,10 @@ int main(int argc, char* argv[]){
     pthread_t th1;
     pthread_create(&th1,NULL,udp_listen,id);
  
-    sleep(2);
-    system("clear");
     int choice;
-    while (1){            
+    while (1){    
+        sleep(2);
+        system("clear");        
         //!Mutex?
         //Controllo notifiche udp
         pthread_mutex_lock(&id->mtx);
@@ -74,10 +80,24 @@ int main(int argc, char* argv[]){
             continue;
         case 2:
             //TODO messaggio
+            mess(id);
             continue;
+        case 3:
+            //TODO flood
+            floo(id);
+            continue;
+        case 4:
+            //TODO elenco clienti
+            list(id);
+            continue;
+        case 5:
+            //TODO consultazione
+            continue;
+        case 6:
+            //TODO disconnessione
+            iquit(id);
         default:
             puts("ERRORE! Numero fuori dai limiti.\nRitenta fra poco");
-            sleep(2);
             continue;
         }
     }

@@ -66,6 +66,7 @@ int udpSock(client_id* id){
     address_sock_udp.sin_addr.s_addr=htonl(INADDR_ANY);
     if(bind(id->fdUDP,(struct sockaddr *)&address_sock_udp,sizeof(struct sockaddr_in)) == EOF){
         perror("Errore binding udp");
+        close(id->fdTCP);
         free(id);
         return -1;
     }
@@ -76,19 +77,28 @@ int udpSock(client_id* id){
 int print_intro(){
     puts("Benvenuto su IPortbook!\nSe è la tua prima volta, premi 1 e registrati, altrimenti digita 2 per conneterti o 3 per uscire\n");
     int n;
-    scanf("%d", &n);
+    char* tmp=malloc(100*sizeof(char));
+    //scanf("%d", &n);
+    fgets(tmp, 100, stdin);
+    n=atoi(tmp);
+    free(tmp);
     return n;
 }
 
 int print_menu(){
-    puts("Scegli una tra le seguenti opzioni e digita il numero a essa associato\n1. Richiedi amicizia\n2. Manda messaggio\n");
+    puts("Scegli una tra le seguenti opzioni e digita il numero a essa associato\n1. Richiedi amicizia\n2. Manda messaggio\n3. Manda flood\n4. Visualizza elenco utenti\n5. Consulta le notifiche\n6. Disconnettiti\n");
     int n;
-    scanf("%d", &n);
+    //scanf("%d", &n);
+    char* tmp=malloc(100*sizeof(char));
+    fgets(tmp, 100, stdin);
+    n=atoi(tmp);
+    free(tmp);
+    system("clear");
     return n;
 }
 
 //Funzione ausiliaria per mandare messaggio tcp al server
-void sendTcp(const client_id* id, char* mess, char type[]){
+void sendTcp(client_id* id, char* mess, char type[]){
     if (strcmp(type, REGIS_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_REGIS);
     }
@@ -98,28 +108,51 @@ void sendTcp(const client_id* id, char* mess, char type[]){
     else if (strcmp(type, FRIE_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_FRIE);
     }
+    else if (strcmp(type, MESS_HEADER) == 0){
+        write(id->fdTCP, mess, LENGTH_MESS+id->messLength);
+    }
+    else if (strcmp(type, FLOO_HEADER) == 0){
+        write(id->fdTCP, mess, LENGTH_FLOO+id->messLength);
+    }
+    else if (strcmp(type, LIST_HEADER) == 0){
+        write(id->fdTCP, mess, LENGTH_LIST);
+        read_list(id->fdTCP);
+        return;
+    }
+    else if (strcmp(type, IQUIT_HEADER) ==0 ){
+        write(id->fdTCP, mess, LENGTH_IQUIT);
+    }
     char buf[10];
     int r=read(id->fdTCP, buf, 9);
     buf[r]='\0';
     printf("%s\n", buf);
+    char tmp[LENGTH_HEADER+LENGTH_END_SYMBOL]; //+1 implicito in LENGTH_HEADER
+    strcpy(tmp, GOBYE_HEADER); 
+    if (strcmp(buf, strcat(tmp, END_SYMBOL)) == 0){ //tmp=GOBYE+++
+        close(id->fdUDP);
+        free(id);
+        free(mess);
+        exit(EXIT_SUCCESS);
+    }
 }
 
 //Funzione ausiliaria per costurire messaggio REGIS
-char* build_message_reg(const client_id *id){
+char* build_message_reg(client_id *id){
     char *mess=malloc(LENGTH_HEADER+LENGTH_ID+1+LENGTH_UDP_PORT+1+2+LENGTH_END_SYMBOL);
     printf("DEBUG: MDP in little-endian = 0x%02x 0x%02x\n", id->MDP & 255, (id->MDP >> 8) & 255);
     sprintf(mess, "%s%s %s ", REGIS_HEADER, id->ID, id->PORT);
     int i=strlen(mess);
     mess[i]=(id->MDP >> 8) & 255;
     mess[i++]=id->MDP & 255;
-    memcpy(mess+i+1, END_SYMBOL, 3);
+    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
 
     return mess;
 }
 
-void registration(const client_id *id){
+void registration(client_id *id){
     char *mess=build_message_reg(id);
     sendTcp(id, mess, REGIS_HEADER);
+    free(mess);
 }
 
 //Funzione ausiliaria per costurire messaggio CONNE
@@ -129,13 +162,14 @@ char *build_message_conn(const client_id *id){
     int i=strlen(mess);
     mess[i]=(id->MDP >> 8) & 255;
     mess[i++]=id->MDP & 255;
-    memcpy(mess+i+1, END_SYMBOL, 3);
+    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
     return mess;
 }
 
-void connection(const client_id *id){
+void connection(client_id *id){
     char *mess=build_message_conn(id);
     sendTcp(id, mess, CONNE_HEADER);
+    free(mess);
 }
 
 //Funzione ausiliaria per costurire messaggio FRIE?
@@ -143,32 +177,135 @@ char *build_message_frie(){
     char *mess=malloc(LENGTH_FRIE);
     char buf[100];
     printf("Inserisci l'ID dell'utente con cui desideri stringere amicizia: ");
-    scanf("%s", buf);
+    //scanf("%s", buf);
+    fgets(buf, 100, stdin);
+    buf[strcspn(buf, "\n")] = '\0';
     if (strlen(buf) != LENGTH_ID){
-        free(mess);
         return NULL;
     }
     char frie_id[LENGTH_ID+1];
     strncpy(frie_id, buf, LENGTH_ID);
     sprintf(mess, "%s%s", FRIE_HEADER, frie_id);
-    memcpy(mess+LENGTH_HEADER+LENGTH_ID, END_SYMBOL, 3);
+    memcpy(mess+LENGTH_HEADER+LENGTH_ID, END_SYMBOL, LENGTH_END_SYMBOL);
     return mess;
 }
 
-void friend(const client_id* id){
+void friend(client_id* id){
     char *mess=build_message_frie();
     if (mess == NULL){
         fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
         return;
     }
     sendTcp(id, mess, FRIE_HEADER);
+    free(mess);
+}
+
+//Funzione ausiliaria per leggere il messaggio scritto in input
+void read_mess(char* str){
+    system("clear");
+    printf("Inserisci il messaggio da inviare: ");
+    fgets(str, MAX_MESS, stdin);
+    str[strcspn(str, "\n")] = '\0';
+}
+
+//Funzione ausiliaria per costruire messaggio MESS?
+char* build_message_mess(const char* str, int length){
+    char* mess=malloc(LENGTH_HEADER+LENGTH_ID+1+length+LENGTH_END_SYMBOL);
+    char buf[100];
+    printf("Inserisci l'ID dell'utente a cui vuoi mandare il messaggio: ");
+    //scanf("%s", buf);
+    fgets(buf, 100, stdin);
+    buf[strcspn(buf, "\n")] = '\0';
+    if (strlen(buf) != LENGTH_ID){
+        return NULL;
+    }
+    sprintf(mess, "%s%s %s", MESS_HEADER, buf, str);
+    memcpy(mess+LENGTH_HEADER+LENGTH_ID+1+length, END_SYMBOL, 3);
+    return mess;
+}
+
+void mess(client_id* id){
+    char str[200];
+    read_mess(str);
+    id->messLength=strlen(str);
+    char* mess=build_message_mess(str, id->messLength);
+    if (mess == NULL){
+        fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
+        return;
+    }
+    sendTcp(id, mess, MESS_HEADER);
+    free(mess);
+}
+
+//Funzione ausiliaria per costruire ,essaggio FLOO?
+char* build_message_floo(const char* str, int length){
+    char* mess=malloc(LENGTH_HEADER+length+LENGTH_END_SYMBOL);
+    sprintf(mess, "%s%s", FLOO_HEADER, str);
+    memcpy(mess+LENGTH_HEADER+length, END_SYMBOL, 3);
+    return mess;
+}
+
+void floo(client_id* id){
+    char str[200];
+    read_mess(str);
+    id->messLength=strlen(str);
+    char* mess=build_message_floo(str, id->messLength);
+    if (mess == NULL){
+        fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
+        return;
+    }
+    sendTcp(id, mess, FLOO_HEADER);
+    free(mess);
+}
+
+void read_list(int fd){
+    char buf[LENGTH_RLIST+1];
+        int r=read(fd, buf, LENGTH_RLIST);
+        buf[r]='\0';
+        int num_users;
+        printf("%s\n", buf);
+        sscanf(buf, FORMAT_RLIST, &num_users);
+        printf("DEBUG: numero utenti = %d\n", num_users);
+        char usr[LENGTH_LINUM+1];
+        for (int i=0;i<num_users;i++){
+            r=read(fd, usr, LENGTH_LINUM);
+            usr[r]='\0';
+            printf("%s\n", usr);
+        }
+}
+
+//Funzione ausiliaria per costruire messaggio LIST?
+char* build_message_list(){
+    char* mess=malloc(LENGTH_LIST+1);
+    sprintf(mess, "%s%s", LIST_HEADER, END_SYMBOL);
+    return mess;
+}
+
+void list(client_id* id){
+    char* mess=build_message_list();
+    sendTcp(id, mess, LIST_HEADER);
+    free(mess);
+}
+
+char* build_message_iquit(){
+    char* mess=malloc(LENGTH_IQUIT+1);
+    sprintf(mess, "%s%s", IQUIT_HEADER, END_SYMBOL);
+    return mess;
+}
+
+void iquit(client_id* id){
+    char* mess=build_message_iquit();
+    sendTcp(id, mess, IQUIT_HEADER);
+    free(mess);
 }
 
 void* udp_listen(void* ptr){
     client_id *id = (client_id *)ptr;
-    char buf[4];
+    char buf[LENGTH_UDP_NOT+1];
+    struct sockaddr_in server;
+    socklen_t a=sizeof(server);
     while(1){
-        int rec=recv(id->fdUDP,buf,3,0);
+        int rec=recvfrom(id->fdUDP,buf,LENGTH_UDP_NOT,0,(struct sockaddr *)&server,&a);
         buf[rec]='\0';
         //!Mutex?
         pthread_mutex_lock(&id->mtx);

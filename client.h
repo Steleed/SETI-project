@@ -11,6 +11,7 @@ typedef struct{
     int fdTCP; //Socket TCP
     int fdUDP; //Socket TCP
     int notifications; //Numero notifiche udp
+    int messLength; //Lunghezza messaggio da inviare ad un amico/flood
     pthread_mutex_t mtx; //Mutex per le notifiche UDP
 } client_id;
 
@@ -36,13 +37,28 @@ int print_intro();
 int print_menu();
 
 //Invia richiesta REGIS al server
-void registration(const client_id *);
+void registration(client_id *);
 
 //Invia richiesta CONNE al server 
-void connection(const client_id *);
+void connection(client_id *);
 
 //Invia richiesta FRIE? al server
-void friend(const client_id *);
+void friend(client_id *);
+
+//Invia richiesta MESS? al server
+void mess(client_id*);
+
+//Invia richiesta FLOO? al server
+void floo(client_id*);
+
+//Invia richiesta LIST? al server
+void list(client_id*);
+
+//Legge la lista di utenti inviata dal server
+void read_list(int);
+
+//Invia richiesta IQUIT al server
+void iquit(client_id *);
 
 //Thread per ascoltare su porta UDP
 void* udp_listen(void*);
