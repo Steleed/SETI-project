@@ -5,8 +5,8 @@
 
 // Struct identificativo client
 typedef struct{
-    char ID[9]; //Nome identificativo
-    char PORT[5];  //Porta UDP
+    char ID[LENGTH_ID+1]; //Nome identificativo
+    char PORT[LENGTH_UDP_PORT+1];  //Porta UDP
     uint16_t MDP; //Password in little-endian
     int fdTCP; //Socket TCP
     int fdUDP; //Socket TCP
@@ -59,6 +59,9 @@ void read_list(int);
 
 //Invia richiesta IQUIT al server
 void iquit(client_id *);
+
+//Invia richiesta CONSU al server
+//TODO CONSU
 
 //Thread per ascoltare su porta UDP
 void* udp_listen(void*);

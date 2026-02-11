@@ -1,6 +1,4 @@
 #include "client.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 bool check_args(int argc, char* argv[], client_id* id){
     if (argc != 5)  return false;
@@ -122,13 +120,16 @@ void sendTcp(client_id* id, char* mess, char type[]){
     else if (strcmp(type, IQUIT_HEADER) ==0 ){
         write(id->fdTCP, mess, LENGTH_IQUIT);
     }
+    else{
+        //TODO CONSU
+    }
     char buf[10];
     int r=read(id->fdTCP, buf, 9);
     buf[r]='\0';
     printf("%s\n", buf);
-    char tmp[LENGTH_HEADER+LENGTH_END_SYMBOL]; //+1 implicito in LENGTH_HEADER
-    strcpy(tmp, GOBYE_HEADER); 
-    if (strcmp(buf, strcat(tmp, END_SYMBOL)) == 0){ //tmp=GOBYE+++
+    char tmp[LENGTH_HEADER+LENGTH_END_SYMBOL+1]; 
+    strcpy(tmp, GOBYE_HEADER); //tmp=GOBYE+++
+    if (strcmp(buf, strcat(tmp, END_SYMBOL)) == 0){ 
         close(id->fdUDP);
         free(id);
         free(mess);
@@ -138,12 +139,12 @@ void sendTcp(client_id* id, char* mess, char type[]){
 
 //Funzione ausiliaria per costurire messaggio REGIS
 char* build_message_reg(client_id *id){
-    char *mess=malloc(LENGTH_HEADER+LENGTH_ID+1+LENGTH_UDP_PORT+1+2+LENGTH_END_SYMBOL);
-    printf("DEBUG: MDP in little-endian = 0x%02x 0x%02x\n", id->MDP & 255, (id->MDP >> 8) & 255);
-    sprintf(mess, "%s%s %s ", REGIS_HEADER, id->ID, id->PORT);
-    int i=strlen(mess);
+    char *mess=malloc(LENGTH_REGIS);
+    int i=sprintf(mess, "%s %s %s ", REGIS_HEADER, id->ID, id->PORT);
+    mess[i]=id->MDP & 255;
+    i++;
     mess[i]=(id->MDP >> 8) & 255;
-    mess[i++]=id->MDP & 255;
+    printf("DEBUG: MDP in little-endian = 0x%02x 0x%02x\n", mess[i-1], mess[i]);
     memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
 
     return mess;
@@ -157,12 +158,13 @@ void registration(client_id *id){
 
 //Funzione ausiliaria per costurire messaggio CONNE
 char *build_message_conn(const client_id *id){
-    char *mess=malloc(LENGTH_HEADER+LENGTH_ID+1+2+LENGTH_END_SYMBOL);
-    sprintf(mess, "%s%s ", CONNE_HEADER, id->ID);
-    int i=strlen(mess);
+    char *mess=malloc(LENGTH_CONNE);
+    int i=sprintf(mess, "%s %s ", CONNE_HEADER, id->ID);
+    mess[i]=id->MDP & 255;
+    i++;
     mess[i]=(id->MDP >> 8) & 255;
-    mess[i++]=id->MDP & 255;
     memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
+
     return mess;
 }
 
@@ -174,19 +176,23 @@ void connection(client_id *id){
 
 //Funzione ausiliaria per costurire messaggio FRIE?
 char *build_message_frie(){
-    char *mess=malloc(LENGTH_FRIE);
-    char buf[100];
+    char *mess=malloc(LENGTH_FRIE+1);
+    char *buf=malloc(100*sizeof(char));
     printf("Inserisci l'ID dell'utente con cui desideri stringere amicizia: ");
     //scanf("%s", buf);
     fgets(buf, 100, stdin);
     buf[strcspn(buf, "\n")] = '\0';
     if (strlen(buf) != LENGTH_ID){
+        free(mess);
+        free(buf);
         return NULL;
     }
-    char frie_id[LENGTH_ID+1];
+    /*char frie_id[LENGTH_ID+1];
     strncpy(frie_id, buf, LENGTH_ID);
     sprintf(mess, "%s%s", FRIE_HEADER, frie_id);
-    memcpy(mess+LENGTH_HEADER+LENGTH_ID, END_SYMBOL, LENGTH_END_SYMBOL);
+    memcpy(mess+LENGTH_HEADER+LENGTH_ID, END_SYMBOL, LENGTH_END_SYMBOL);*/
+    sprintf(mess, FORMAT_FRIE, buf);
+    free(buf);
     return mess;
 }
 
@@ -210,17 +216,21 @@ void read_mess(char* str){
 
 //Funzione ausiliaria per costruire messaggio MESS?
 char* build_message_mess(const char* str, int length){
-    char* mess=malloc(LENGTH_HEADER+LENGTH_ID+1+length+LENGTH_END_SYMBOL);
-    char buf[100];
+    char* mess=malloc(LENGTH_MESS+length+1);
+    char *buf=malloc(100*sizeof(char));
     printf("Inserisci l'ID dell'utente a cui vuoi mandare il messaggio: ");
     //scanf("%s", buf);
     fgets(buf, 100, stdin);
     buf[strcspn(buf, "\n")] = '\0';
     if (strlen(buf) != LENGTH_ID){
+        free(mess);
+        free(buf);
         return NULL;
     }
-    sprintf(mess, "%s%s %s", MESS_HEADER, buf, str);
-    memcpy(mess+LENGTH_HEADER+LENGTH_ID+1+length, END_SYMBOL, 3);
+    /*sprintf(mess, "%s%s %s", MESS_HEADER, buf, str);
+    memcpy(mess+LENGTH_HEADER+LENGTH_ID+1+length, END_SYMBOL, 3);*/
+    sprintf(mess, FORMAT_MESS, buf, str);
+    free(buf);
     return mess;
 }
 
@@ -239,9 +249,10 @@ void mess(client_id* id){
 
 //Funzione ausiliaria per costruire ,essaggio FLOO?
 char* build_message_floo(const char* str, int length){
-    char* mess=malloc(LENGTH_HEADER+length+LENGTH_END_SYMBOL);
-    sprintf(mess, "%s%s", FLOO_HEADER, str);
-    memcpy(mess+LENGTH_HEADER+length, END_SYMBOL, 3);
+    char* mess=malloc(LENGTH_FLOO+length+1);
+    /*sprintf(mess, "%s%s", FLOO_HEADER, str);
+    memcpy(mess+LENGTH_HEADER+length, END_SYMBOL, 3);*/
+    sprintf(mess, FORMAT_FLOO, str);
     return mess;
 }
 
@@ -250,10 +261,6 @@ void floo(client_id* id){
     read_mess(str);
     id->messLength=strlen(str);
     char* mess=build_message_floo(str, id->messLength);
-    if (mess == NULL){
-        fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
-        return;
-    }
     sendTcp(id, mess, FLOO_HEADER);
     free(mess);
 }
@@ -277,7 +284,7 @@ void read_list(int fd){
 //Funzione ausiliaria per costruire messaggio LIST?
 char* build_message_list(){
     char* mess=malloc(LENGTH_LIST+1);
-    sprintf(mess, "%s%s", LIST_HEADER, END_SYMBOL);
+    strcpy(mess, FORMAT_LIST);
     return mess;
 }
 
@@ -289,14 +296,13 @@ void list(client_id* id){
 
 char* build_message_iquit(){
     char* mess=malloc(LENGTH_IQUIT+1);
-    sprintf(mess, "%s%s", IQUIT_HEADER, END_SYMBOL);
+    strcpy(mess, FORMAT_IQUIT);
     return mess;
 }
 
 void iquit(client_id* id){
     char* mess=build_message_iquit();
     sendTcp(id, mess, IQUIT_HEADER);
-    free(mess);
 }
 
 void* udp_listen(void* ptr){
