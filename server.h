@@ -36,3 +36,35 @@ typedef struct {
     int friendsCount;
     
     // Gestione Messaggi (I Flussi)
+    MessageNode *pendingMessages;  // Testa della lista concatenata (Coda)
+    int pendingCount;              // Numero messaggi in coda (per la notifica UDP)
+
+    // Gestione Stato "Bloccato" (Per specifica CONSU su richiesta amicizia)
+    // Se true, l'utente DEVE rispondere alla richiesta prima di fare altro.
+    bool isBlocked;                
+    char blockedByUserID[LENGTH_ID + 1]; // L'ID di chi ha mandato la richiesta che blocca
+
+    // Thread Safety
+    pthread_mutex_t userMutex;     // Protegge i dati di QUESTO utente (es. coda messaggi)
+} Client;
+
+// --- VARIABILI GLOBALI (Definite poi in server.c) ---
+extern Client users[MAX_USERS];        // Il database in memoria
+extern int registeredUsers;            // Quanti utenti ci sono ora
+extern pthread_mutex_t usersListMutex; // Protegge l'aggiunta di nuovi utenti (registro globale)
+
+// --- PROTOTIPI FUNZIONI ---
+
+// Inizializza tutte le strutture dati all'avvio del server
+void init_server_structures();
+
+// La funzione principale eseguita dal Thread per ogni client
+void* client_handler(void* socket_desc);
+
+// Funzione per inviare la notifica UDP (il "BIP") a un utente
+void send_udp_notification(int userIndex);
+
+// Funzione per cercare un utente nell'array (restituisce l'indice o -1)
+int find_user_index(char* id);
+
+#endif
