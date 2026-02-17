@@ -1,5 +1,8 @@
-#include <stdlib.h>
-#include <stdio.h>
+#include "server.h"
+
+Client users[MAX_USERS];
+int registeredUsers=0;
+pthread_mutex_t usersListMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(){
     struct sockaddr_in address_sock;
@@ -21,7 +24,8 @@ int main(){
         int *sockCaller=(int *)malloc(sizeof(int));
         *sockCaller=accept(sock, (struct sockaddr *)&caller, &size);
         if (*sockCaller != EOF){
-            //TODO thread
+            pthread_t t1;
+            pthread_create(&t1, NULL, client_handler, sockCaller);
         }
     }
     return EXIT_SUCCESS;

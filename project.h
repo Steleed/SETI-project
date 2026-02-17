@@ -16,9 +16,12 @@
 #define LENGTH_UDP_PORT 4 //Lunghezza (in byte) della porta UDP
 #define LENGTH_UDP_NOT 3 //Lunghezza (in byte) della notifica udp
 #define MAX_PSWD 65535 //Numero massimo per password
+#define MAX_USERS 100 //Numero massimo utenti
 
 #define WELCO_HEADER "WELCO" //Header messaggio welcome
+#define FORMAT_WELCO "WELCO+++" //Formato messaggio welcome
 #define GOBYE_HEADER "GOBYE" //Header messaggio goodbye
+#define FORMAT_GOBYE "GOBYE+++" //Formato messaggio goodbye
 
 #define END_SYMBOL "+++" //Simbolo terminale per messaggi TCP
 #define LENGTH_END_SYMBOL 3 //Lunghezza simbolo terminale per messaggi TCP
@@ -27,11 +30,11 @@
 
 #define REGIS_HEADER "REGIS" //Intestazione per la registrazione
 #define LENGTH_REGIS 25 //Lunghezza messaggio registrazione
-//!#define FORMAT_REGIS "REGIS %8s %4s "  //Formato messaggio registrazione
+#define FORMAT_REGIS "REGIS %8.8s %4.4s %c%c+++"  //Formato messaggio registrazione
 
 #define CONNE_HEADER "CONNE" //Intestazione per la connessione
 #define LENGTH_CONNE 20 //Lunghezza messaggio connessione
-//!#define FORMAT_CONNE "CONNE %8s " //Formato messaggio connessione
+#define FORMAT_CONNE "CONNE %8.8s %c%c+++" //Formato messaggio connessione
 
 #define FRIE_HEADER "FRIE?" //Intestazione per richiesta amicizia
 #define LENGTH_FRIE 17 //Lunghezza messaggio amicizia
@@ -53,6 +56,8 @@
 #define LENGTH_RLIST 12 //Lunghezza massima messaggio RLIST
 #define FORMAT_RLIST "RLIST %3d+++" //Formato messaggio RLIST
 #define LENGTH_LINUM 17 //Lunghezza messaggio LINUM
+
+#define CONSU_HEADER "CONSU" //Intestazione messaggio consultazione notifiche
 
 #define IQUIT_HEADER "IQUIT"  //Intestazione messaggio di disconnessione
 #define LENGTH_IQUIT 8 //Lunghezza messaggio disconnessione
