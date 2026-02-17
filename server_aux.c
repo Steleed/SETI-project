@@ -44,7 +44,7 @@ void regis(int sock, char* buffer){
 
     int i = registeredUsers;
     strncpy(users[i].ID, id, LENGTH_ID);
-    users[i].password = (uint16_t)atoi(password); //
+    users[i].password = (uint16_t)atoi(password); //salva in 2 byte
     strncpy(users[i].udpPort, port, LENGTH_UDP_PORT);
     users[i].socketTCP = sock;
     users[i].pendingMessages = NULL;
