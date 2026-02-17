@@ -54,7 +54,7 @@ int tcpSock(client_id* id){
         system("clear");
     }
     return 0;
-}laligi
+}
 
 int udpSock(client_id* id){
     id->fdUDP=socket(PF_INET, SOCK_DGRAM, 0);
