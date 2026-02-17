@@ -123,13 +123,11 @@ void sendTcp(client_id* id, char* mess, char type[]){
     else{
         //TODO CONSU
     }
-    char buf[10];
-    int r=read(id->fdTCP, buf, 9);
+    char buf[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
+    int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL);
     buf[r]='\0';
     printf("%s\n", buf);
-    char tmp[LENGTH_HEADER+LENGTH_END_SYMBOL+1]; 
-    strcpy(tmp, GOBYE_HEADER); //tmp=GOBYE+++
-    if (strcmp(buf, strcat(tmp, END_SYMBOL)) == 0){ 
+    if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
         free(id);
         free(mess);
@@ -139,13 +137,15 @@ void sendTcp(client_id* id, char* mess, char type[]){
 
 //Funzione ausiliaria per costurire messaggio REGIS
 char* build_message_reg(client_id *id){
-    char *mess=malloc(LENGTH_REGIS);
+    /*char *mess=malloc(LENGTH_REGIS);
     int i=sprintf(mess, "%s %s %s ", REGIS_HEADER, id->ID, id->PORT);
     mess[i]=id->MDP & 255;
     i++;
     mess[i]=(id->MDP >> 8) & 255;
     printf("DEBUG: MDP in little-endian = 0x%02x 0x%02x\n", mess[i-1], mess[i]);
-    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
+    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);*/
+    char *mess=malloc(LENGTH_REGIS+1);
+    sprintf(mess, FORMAT_REGIS, id->ID, id->PORT, id->MDP & 255, (id->MDP >> 8) & 255);
 
     return mess;
 }
@@ -158,12 +158,14 @@ void registration(client_id *id){
 
 //Funzione ausiliaria per costurire messaggio CONNE
 char *build_message_conn(const client_id *id){
-    char *mess=malloc(LENGTH_CONNE);
+    /*char *mess=malloc(LENGTH_CONNE);
     int i=sprintf(mess, "%s %s ", CONNE_HEADER, id->ID);
     mess[i]=id->MDP & 255;
     i++;
     mess[i]=(id->MDP >> 8) & 255;
-    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);
+    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);*/
+    char *mess=malloc(LENGTH_REGIS+1);
+    sprintf(mess, FORMAT_CONNE, id->ID, id->MDP & 255, (id->MDP >> 8) & 255);
 
     return mess;
 }
@@ -210,7 +212,7 @@ void friend(client_id* id){
 void read_mess(char* str){
     system("clear");
     printf("Inserisci il messaggio da inviare: ");
-    fgets(str, MAX_MESS, stdin);
+    fgets(str, 500, stdin);
     str[strcspn(str, "\n")] = '\0';
 }
 
@@ -278,6 +280,7 @@ void read_list(int fd){
             r=read(fd, usr, LENGTH_LINUM);
             usr[r]='\0';
             printf("%s\n", usr);
+            sleep(1);
         }
 }
 

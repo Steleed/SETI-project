@@ -75,28 +75,28 @@ int main(int argc, char* argv[]){
         case 1: 
             //TODO amiciaiza
             friend(id);
-            continue;
+            break;
         case 2:
             //TODO messaggio
             mess(id);
-            continue;
+            break;
         case 3:
             //TODO flood
             floo(id);
-            continue;
+            break;
         case 4:
             //TODO elenco clienti
             list(id);
-            continue;
+            break;
         case 5:
             //TODO consultazione
-            continue;
+            break;
         case 6:
             //TODO disconnessione
             iquit(id);
         default:
             puts("ERRORE! Numero fuori dai limiti.\nRitenta fra poco");
-            continue;
+            break;
         }
     }
     return EXIT_SUCCESS;
