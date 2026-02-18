@@ -30,3 +30,83 @@ int main(){
     }
     return EXIT_SUCCESS;
 }
+
+void* client_handler(void* socket_desc){
+    int* sock=(int *)socket_desc;
+    int p;
+    int index=-1; //Indice restituito dalle funzioni regis/conne
+    while (1){
+        char buf[500];
+        int r=read(*sock, buf, 500);
+        if (r==0){
+            printf("[LOG] CONNESSIONE PERSA\n");
+            return NULL;
+        }
+        buf[r]='\0';
+        printf("[LOG] MESSAGGIO RICEVUTO: ");
+        for (int i=0; i<19; i++){
+            if (buf[i]=='\0')
+                printf("0");
+            else
+                printf("%c", buf[i]);
+        }
+        printf("\n[LOG] Inizio parsing messaggio\n");
+        p=parser(buf, r);
+        switch (p)
+        {
+            case 1:
+            printf("[PARSER] messaggio REGIS ricevuto\n");
+            if (regis(*sock,buf) == -1){
+                fprintf(stderr, "[REGIS] registrazione fallita");
+                close(*sock);
+                return NULL;
+            }
+            break;
+
+            case 2:
+            printf("[PARSER] messaggio CONNE ricevuto\n");
+            if (conne(*sock, buf) == -1){
+                fprintf(stderr, "[CONNE] connessione fallita");
+                close(*sock);
+                return NULL;
+            }
+            break;
+
+            case 3:
+            //TODO FRIE
+            printf("[PARSER] messaggio FRIE? ricevuto\n");
+            break;
+
+            case 4:
+            //TODO MESS
+            printf("[PARSER] messaggio MESS? ricevuto\n");
+            break;
+
+            case 5:
+            //TODO FLOO
+            printf("[PARSER] messaggio FLOO? ricevuto\n");
+            break;
+
+            case 6:
+            //TODO LIST
+            printf("[PARSER] messaggio LIST? ricevuto\n");
+            break;
+            
+            case 7:
+            //TODO CONSU
+            printf("[PARSER] messaggio CONSU ricevuto\n");
+            break;
+
+            case 8:
+            //TODO IQUIT
+            printf("[PARSER] messaggio IQUIT ricevuto\n");
+            break;
+    
+        default:
+            printf("[PARSER] Messaggio non valido\n");
+            sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, *sock);
+            close(*sock);
+            return NULL;
+        }
+    }
+}

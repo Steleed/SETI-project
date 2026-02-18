@@ -1,5 +1,6 @@
 #include "server.h"
 
+//Funzione ausiliaria per il parsing dei messaggi ricevuti
 int parser(char mess[], int l){
     if (l < LENGTH_HEADER) return -1;
     if (strncmp(mess, REGIS_HEADER, LENGTH_HEADER) == 0) return 1;
@@ -18,15 +19,26 @@ void sendTCP(char *type, int size,  int sock){
     write(sock, type, size);
 }
 
-void regis(int sock, char* buffer){
+int find_user_index(char* id){
+    pthread_mutex_lock(&usersListMutex);
+    for (int i=0; i<MAX_USERS; i++){
+        if (strcmp(users[i].ID, id) == 0){
+            pthread_mutex_unlock(&usersListMutex);
+            return i;
+        }
+    }
+    pthread_mutex_unlock(&usersListMutex);
+    return -1;
+}
+
+int regis(int sock, char* buffer){
     char id[LENGTH_ID + 1];
     uint16_t password;
     char port[LENGTH_UDP_PORT + 1];
     int b=0;
     if (sscanf(buffer, "REGIS %8s %4s%n", id, port, &b) != 2) {
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER + LENGTH_END_SYMBOL, sock);
-        close(sock);
-        return;
+        return -1;
     }
     unsigned char p1 = (unsigned char)buffer[b];
     unsigned char p2 = (unsigned char)buffer[b+1];
@@ -35,16 +47,14 @@ void regis(int sock, char* buffer){
     if (registeredUsers>=MAX_USERS) { //controllo se c'è spazio
         pthread_mutex_unlock(&usersListMutex);
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock); // Server pieno
-        close(sock);
-        return;
+        return -1;
     }
     
     for (int i = 0; i < registeredUsers; i++) { //controllo nome doppio
         if (strcmp(users[i].ID, id) == 0) {
             pthread_mutex_unlock(&usersListMutex);
             sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock); // Utente già esistente
-            close(sock);
-            return;
+            return -1;
         }
     }
 
@@ -63,6 +73,7 @@ void regis(int sock, char* buffer){
     pthread_mutex_unlock(&usersListMutex);
     printf("[REGIS] Utente %s registrato con successo (Indice: %d)\n", id, i);
     sendTCP(FORMAT_WELCO,LENGTH_HEADER+LENGTH_END_SYMBOL , sock);
+    return i;
 }
 
 void conne(int sock, char* buffer){
@@ -84,15 +95,13 @@ void conne(int sock, char* buffer){
     {
         pthread_mutex_unlock(&usersListMutex);
         sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
-        close(sock);
-        return; 
+        return -1; 
     }
     if(users[found].password!=password) //password sbagliata
     {
         pthread_mutex_unlock(&usersListMutex);
         sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
-        close(sock);
-        return;
+        return -1;
     }
     pthread_mutex_lock(&users[found].userMutex);
     users[found].socketTCP=sock;
@@ -102,83 +111,27 @@ void conne(int sock, char* buffer){
     pthread_mutex_unlock(&usersListMutex);
     printf("[CONNE] Utente %s riconnesso (Socket %d)\n", id, sock);
     sendTCP(FORMAT_HELLO,LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
+    return found;
 }
     
 
-void frie(char* mess){
-    
+void frie(char* buffer, int index){
+    if (index == -1)  return -1;
+    char friend_id[LENGTH_ID+1];
+    if (sscanf(buffer, FORMAT_FRIE, friend_id) != 1){
+        sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+        return -1;
+    }
+    int friend_index=find_user_index(friend_id);
+    if (friend_index==-1 || friend_index == index){ //Controllo se friend_index esiste e che non stia cercando di richiedere amicizia a se stesso
+        sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+        return -1;
+    }
+    sendTCP(FORMAT_OKFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+    //TODO invio notifica udp e inserimento flusso al destinatario
 }
 
 void mess(){
     
 }
 
-void* client_handler(void* socket_desc){
-    int* sock=(int *)socket_desc;
-    while (1){
-        char buf[500];
-        int r=read(*sock, buf, 500);
-        if (r==0){
-            printf("[LOG] CONNESSIONE PERSA\n");
-            return NULL;
-        }
-        buf[r]='\0';
-        printf("[LOG] MESSAGGIO RICEVUTO: ");
-        for (int i=0; i<19; i++){
-            if (buf[i]=='\0')
-                printf("0");
-            else
-                printf("%c", buf[i]);
-        }
-        printf("\n[LOG] Inizio parsing messaggio\n");
-        int p=parser(buf, r);
-        switch (p)
-        {
-            case 1:
-            printf("[PARSER] messaggio REGIS ricevuto\n");
-            regis(*sock,buf);
-            break;
-
-            case 2:
-            printf("[PARSER] messaggio CONNE ricevuto\n");
-            conne(*sock, buf);
-            break;
-
-            case 3:
-            //TODO FRIE
-            printf("[PARSER] messaggio FRIE? ricevuto\n");
-            break;
-
-            case 4:
-            //TODO MESS
-            printf("[PARSER] messaggio MESS? ricevuto\n");
-            break;
-
-            case 5:
-            //TODO FLOO
-            printf("[PARSER] messaggio FLOO? ricevuto\n");
-            break;
-
-            case 6:
-            //TODO LIST
-            printf("[PARSER] messaggio LIST? ricevuto\n");
-            break;
-            
-            case 7:
-            //TODO CONSU
-            printf("[PARSER] messaggio CONSU ricevuto\n");
-            break;
-
-            case 8:
-            //TODO IQUIT
-            printf("[PARSER] messaggio IQUIT ricevuto\n");
-            break;
-    
-        default:
-            printf("[PARSER] Messaggio non valido\n");
-            sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, *sock);
-            close(*sock);
-            return NULL;
-        }
-    }
-}

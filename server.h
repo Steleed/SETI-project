@@ -37,10 +37,21 @@ extern pthread_mutex_t usersListMutex; //Protegge l'aggiunta di nuovi utenti
 
 //Inizializza tutte le strutture dati all'avvio del server
 void init_server_structures();
+
 //Funzione principale eseguita dal Thread per ogni client
 void* client_handler(void* socket_desc);
+
 //Funzione per inviare la notifica UDP al client
 void send_udp_notification(int userIndex);
+
 //Funzione per cercare un utente nell'array (restituisce l'indice o -1)
 int find_user_index(char* id);
+
+//Funzione per verificare la registrazione (restituisce l'indice o -1)
+int regis(int, char*);
+
+//Funzione per verificare la connessione (restituisce l'indice o -1)
+int conne(int, char*);
+
+
 #endif

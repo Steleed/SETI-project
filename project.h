@@ -40,6 +40,8 @@
 #define FRIE_HEADER "FRIE?" //Intestazione per richiesta amicizia
 #define LENGTH_FRIE 17 //Lunghezza messaggio amicizia
 #define FORMAT_FRIE "FRIE? %8.8s+++" //Formato messaggio richiesta amicizia
+#define FORMAT_OKFRIE "FRIE>+++" //Formato conferma invio richiesta amicizia
+#define FORMAT_NOFRIE "FRIE<+++" //Formato errore invio richiesta  amicizia
 
 #define MAX_MESS 200 //Massima lunghezza messaggio da scrivere
 #define MESS_HEADER "MESS?" //Intestazione per invio messaggio a un amico
