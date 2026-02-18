@@ -31,6 +31,7 @@ typedef struct {
 //VARIABILI GLOBALI
 extern Client users[MAX_USERS];        //Il database in memoria
 extern int registeredUsers;            //Quanti utenti ci sono ora
+extern int socketUDP;                  //Socket UDP per mandare notifiche agli utenti
 extern pthread_mutex_t usersListMutex; //Protegge l'aggiunta di nuovi utenti 
 
 //FUNZIONI

@@ -1,8 +1,10 @@
 #include "server.h"
 
-Client users[MAX_USERS];
-int registeredUsers=0;
-pthread_mutex_t usersListMutex = PTHREAD_MUTEX_INITIALIZER;
+//Inizializzazione variabili globali
+    Client users[MAX_USERS];
+    int registeredUsers=0;
+    int socketUDP;
+    pthread_mutex_t usersListMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(){
     struct sockaddr_in address_sock;
@@ -20,12 +22,17 @@ int main(){
     }  
     struct sockaddr_in caller;
     socklen_t size=sizeof(caller);
+
+    //Socket UDP
+    socketUDP=socket(PF_INET, SOCK_DGRAM, 0);
+    
     while(1){
         int *sockCaller=(int *)malloc(sizeof(int));
         *sockCaller=accept(sock, (struct sockaddr *)&caller, &size);
-        if (*sockCaller != EOF){
+        if (*sockCaller >= 0){
             pthread_t t1;
             pthread_create(&t1, NULL, client_handler, sockCaller);
+            pthread_detach(t1); 
         }
     }
     return EXIT_SUCCESS;
@@ -40,11 +47,12 @@ void* client_handler(void* socket_desc){
         int r=read(*sock, buf, 500);
         if (r==0){
             printf("[LOG] CONNESSIONE PERSA\n");
+            free(sock);
             return NULL;
         }
         buf[r]='\0';
         printf("[LOG] MESSAGGIO RICEVUTO: ");
-        for (int i=0; i<19; i++){
+        for (int i=0; i<r; i++){
             if (buf[i]=='\0')
                 printf("0");
             else
@@ -59,6 +67,7 @@ void* client_handler(void* socket_desc){
             if (regis(*sock,buf) == -1){
                 fprintf(stderr, "[REGIS] registrazione fallita");
                 close(*sock);
+                free(sock);
                 return NULL;
             }
             break;
@@ -68,6 +77,7 @@ void* client_handler(void* socket_desc){
             if (conne(*sock, buf) == -1){
                 fprintf(stderr, "[CONNE] connessione fallita");
                 close(*sock);
+                free(sock);
                 return NULL;
             }
             break;

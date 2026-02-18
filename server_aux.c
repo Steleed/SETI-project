@@ -76,7 +76,7 @@ int regis(int sock, char* buffer){
     return i;
 }
 
-void conne(int sock, char* buffer){
+int conne(int sock, char* buffer){
     char id[LENGTH_ID+1];
     uint16_t password;
     memcpy(id,buffer+6,LENGTH_ID); 
@@ -114,8 +114,15 @@ void conne(int sock, char* buffer){
     return found;
 }
     
+void send_udp_notification(int userIndex){
+    pthread_mutex_lock(&users[userIndex].userMutex);
+    sendto(socketUDP, users[userIndex].pendingMessages->content, strlen(users[userIndex].pendingMessages->content), 
+        0, (struct sockaddr *)&users[userIndex].clientAddr, (socklen_t)sizeof(struct sockaddr_in));
+    pthread_mutex_unlock(&users[userIndex].userMutex);  
+}
 
-void frie(char* buffer, int index){
+
+int frie(char* buffer, int index){
     if (index == -1)  return -1;
     char friend_id[LENGTH_ID+1];
     if (sscanf(buffer, FORMAT_FRIE, friend_id) != 1){
@@ -128,7 +135,8 @@ void frie(char* buffer, int index){
         return -1;
     }
     sendTCP(FORMAT_OKFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
-    //TODO invio notifica udp e inserimento flusso al destinatario
+    send_udp_notification(index);
+    //TODO inserimento flusso al destinatario
 }
 
 void mess(){
