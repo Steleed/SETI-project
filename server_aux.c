@@ -90,7 +90,7 @@ void conne(int sock, char* buffer){
     if(users[found].password!=password) //password sbagliata
     {
         pthread_mutex_unlock(&usersListMutex);
-        sendTCP(FORMAT_GOBYE, LENGTH_HEADER + LENGTH_END_SYMBOL, sock);
+        sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
         close(sock);
         return;
     }
@@ -101,8 +101,7 @@ void conne(int sock, char* buffer){
     pthread_mutex_unlock(&users[found].userMutex);
     pthread_mutex_unlock(&usersListMutex);
     printf("[CONNE] Utente %s riconnesso (Socket %d)\n", id, sock);
-    char *hello_msg="HELLO+++";
-    sendTCP(hello_msg, LENGTH_HEADER, sock);
+    sendTCP(FORMAT_HELLO,LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
 }
     
 

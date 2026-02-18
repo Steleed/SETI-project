@@ -22,6 +22,7 @@
 #define FORMAT_WELCO "WELCO+++" //Formato messaggio welcome
 #define GOBYE_HEADER "GOBYE" //Header messaggio goodbye
 #define FORMAT_GOBYE "GOBYE+++" //Formato messaggio goodbye
+#define FORMAT_HELLO "HELLO+++" //formato messaggio hello
 
 #define END_SYMBOL "+++" //Simbolo terminale per messaggi TCP
 #define LENGTH_END_SYMBOL 3 //Lunghezza simbolo terminale per messaggi TCP
