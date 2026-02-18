@@ -1,7 +1,5 @@
 #include "server.h"
 
-
-//Funzione ausliaria per parsing messaggi
 int parser(char mess[], int l){
     if (l < LENGTH_HEADER) return -1;
     if (strncmp(mess, REGIS_HEADER, LENGTH_HEADER) == 0) return 1;
@@ -22,15 +20,22 @@ void sendTCP(char *type, int size,  int sock){
 
 void regis(int sock, char* buffer){
     char id[LENGTH_ID + 1];
-    char password[20];
+    uint16_t password;
     char port[LENGTH_UDP_PORT + 1];
-    if (sscanf(buffer, "REGIS %s %s %s", id, password, port) != 3)
+    int b=0;
+    if (sscanf(buffer, "REGIS %8s %4s%n", id, port, &b) != 2) {
+        sendTCP(FORMAT_GOBYE, LENGTH_HEADER + LENGTH_END_SYMBOL, sock);
+        close(sock);
         return;
-    
+    }
+    unsigned char p1 = (unsigned char)buffer[b];
+    unsigned char p2 = (unsigned char)buffer[b+1];
+    password=(uint16_t)p1 | ((uint16_t)p2<<8);
     pthread_mutex_lock(&usersListMutex);
     if (registeredUsers>=MAX_USERS) { //controllo se c'è spazio
         pthread_mutex_unlock(&usersListMutex);
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock); // Server pieno
+        close(sock);
         return;
     }
     
@@ -38,17 +43,19 @@ void regis(int sock, char* buffer){
         if (strcmp(users[i].ID, id) == 0) {
             pthread_mutex_unlock(&usersListMutex);
             sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock); // Utente già esistente
+            close(sock);
             return;
         }
     }
 
     int i = registeredUsers;
     strncpy(users[i].ID, id, LENGTH_ID);
-    users[i].password = (uint16_t)atoi(password); //salva in 2 byte
+    users[i].password=password; 
     strncpy(users[i].udpPort, port, LENGTH_UDP_PORT);
-    users[i].socketTCP = sock;
-    users[i].pendingMessages = NULL;
-    users[i].pendingCount = 0;
+    users[i].socketTCP=sock;
+    users[i].pendingMessages=NULL;
+    users[i].pendingCount=0;
+
     socklen_t len = sizeof(users[i].clientAddr);
     getpeername(sock, (struct sockaddr*)&users[i].clientAddr, &len);
     pthread_mutex_init(&users[i].userMutex, NULL);
@@ -58,8 +65,44 @@ void regis(int sock, char* buffer){
     sendTCP(FORMAT_WELCO,LENGTH_HEADER+LENGTH_END_SYMBOL , sock);
 }
 
-void conne(char* mess){
-
+void conne(int sock, char* buffer){
+    char id[LENGTH_ID+1];
+    uint16_t password;
+    memcpy(id,buffer+6,LENGTH_ID); 
+    unsigned char p1=(unsigned char)buffer[6+LENGTH_ID];    
+    unsigned char p2=(unsigned char)buffer[6+LENGTH_ID+1];
+    password=(uint16_t)p1 | ((uint16_t)p2<<8);
+    pthread_mutex_lock(&usersListMutex);
+    int found=-1;
+    for (int i=0;i<registeredUsers;++i) { //cerca l'utente
+        if (strcmp(users[i].ID,id)==0) {
+            found=i;
+            break;
+        }
+    }
+    if(found==-1) //utente non trovato
+    {
+        pthread_mutex_unlock(&usersListMutex);
+        sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
+        close(sock);
+        return; 
+    }
+    if(users[found].password!=password) //password sbagliata
+    {
+        pthread_mutex_unlock(&usersListMutex);
+        sendTCP(FORMAT_GOBYE, LENGTH_HEADER + LENGTH_END_SYMBOL, sock);
+        close(sock);
+        return;
+    }
+    pthread_mutex_lock(&users[found].userMutex);
+    users[found].socketTCP=sock;
+    socklen_t l=sizeof(users[found].clientAddr);
+    getpeername(sock,(struct sockaddr*)&users[found].clientAddr,&l);
+    pthread_mutex_unlock(&users[found].userMutex);
+    pthread_mutex_unlock(&usersListMutex);
+    printf("[CONNE] Utente %s riconnesso (Socket %d)\n", id, sock);
+    char *hello_msg="HELLO+++";
+    sendTCP(hello_msg, LENGTH_HEADER, sock);
 }
     
 
@@ -82,7 +125,7 @@ void* client_handler(void* socket_desc){
         }
         buf[r]='\0';
         printf("[LOG] MESSAGGIO RICEVUTO: ");
-        for (int i=0; i<r; i++){
+        for (int i=0; i<19; i++){
             if (buf[i]=='\0')
                 printf("0");
             else
@@ -98,11 +141,8 @@ void* client_handler(void* socket_desc){
             break;
 
             case 2:
-            //TODO CONNE
             printf("[PARSER] messaggio CONNE ricevuto\n");
-            /*if (conne(buf) == -1){
-                return NULL;
-            }*/
+            conne(*sock, buf);
             break;
 
             case 3:
