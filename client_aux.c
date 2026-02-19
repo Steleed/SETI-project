@@ -280,7 +280,7 @@ void read_list(int fd){
             r=read(fd, usr, LENGTH_LINUM);
             usr[r]='\0';
             printf("%s\n", usr);
-            sleep(1);
+            //sleep(1);
         }
 }
 

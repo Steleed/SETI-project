@@ -64,7 +64,8 @@ void* client_handler(void* socket_desc){
         {
             case 1:
             printf("[PARSER] messaggio REGIS ricevuto\n");
-            if (regis(*sock,buf) == -1){
+            index=regis(*sock,buf);
+            if (index == -1){
                 fprintf(stderr, "[REGIS] registrazione fallita");
                 close(*sock);
                 free(sock);
@@ -98,8 +99,9 @@ void* client_handler(void* socket_desc){
             break;
 
             case 6:
-            //TODO LIST
             printf("[PARSER] messaggio LIST? ricevuto\n");
+            list(*sock);
+            break;
             break;
             
             case 7:
@@ -108,8 +110,11 @@ void* client_handler(void* socket_desc){
             break;
 
             case 8:
-            //TODO IQUIT
             printf("[PARSER] messaggio IQUIT ricevuto\n");
+            iquit(*sock,index);
+            close(*sock);
+            free(sock);
+            return NULL;
             break;
     
         default:

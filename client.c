@@ -36,15 +36,12 @@ int main(int argc, char* argv[]){
     switch (start)
         {
         case 1: 
-            //TODO registrazione
             registration(id);
             break;
         case 2:
-            //TODO connessione
             connection(id);
             break;
         case 3:
-            //TODO iquit
             iquit(id);
         default:
             fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");

@@ -35,14 +35,13 @@ int regis(int sock, char* buffer){
     char id[LENGTH_ID + 1];
     uint16_t password;
     char port[LENGTH_UDP_PORT + 1];
-    int b=0;
-    if (sscanf(buffer, "REGIS %8s %4s%n", id, port, &b) != 2) {
-        sendTCP(FORMAT_GOBYE, LENGTH_HEADER + LENGTH_END_SYMBOL, sock);
-        return -1;
-    }
-    unsigned char p1 = (unsigned char)buffer[b];
-    unsigned char p2 = (unsigned char)buffer[b+1];
-    password=(uint16_t)p1 | ((uint16_t)p2<<8);
+    strncpy(id, buffer + 6, LENGTH_ID);
+    id[LENGTH_ID] = '\0';
+    strncpy(port, buffer + 15, LENGTH_UDP_PORT);
+    port[LENGTH_UDP_PORT] = '\0';
+    unsigned char p1 = (unsigned char)buffer[20];
+    unsigned char p2 = (unsigned char)buffer[21];
+    password = (uint16_t)p1 | ((uint16_t)p2 << 8);
     pthread_mutex_lock(&usersListMutex);
     if (registeredUsers>=MAX_USERS) { //controllo se c'è spazio
         pthread_mutex_unlock(&usersListMutex);
@@ -68,6 +67,7 @@ int regis(int sock, char* buffer){
 
     socklen_t len = sizeof(users[i].clientAddr);
     getpeername(sock, (struct sockaddr*)&users[i].clientAddr, &len);
+    users[i].clientAddr.sin_port = htons(atoi(port));
     pthread_mutex_init(&users[i].userMutex, NULL);
     registeredUsers++;
     pthread_mutex_unlock(&usersListMutex);
@@ -80,8 +80,9 @@ int conne(int sock, char* buffer){
     char id[LENGTH_ID+1];
     uint16_t password;
     memcpy(id,buffer+6,LENGTH_ID); 
-    unsigned char p1=(unsigned char)buffer[6+LENGTH_ID];    
-    unsigned char p2=(unsigned char)buffer[6+LENGTH_ID+1];
+    id[LENGTH_ID] = '\0';
+    unsigned char p1 = (unsigned char)buffer[15];    
+    unsigned char p2 = (unsigned char)buffer[16];
     password=(uint16_t)p1 | ((uint16_t)p2<<8);
     pthread_mutex_lock(&usersListMutex);
     int found=-1;
@@ -104,9 +105,12 @@ int conne(int sock, char* buffer){
         return -1;
     }
     pthread_mutex_lock(&users[found].userMutex);
-    users[found].socketTCP=sock;
-    socklen_t l=sizeof(users[found].clientAddr);
-    getpeername(sock,(struct sockaddr*)&users[found].clientAddr,&l);
+    users[found].socketTCP = sock;
+    struct sockaddr_in tmp_addr;
+    socklen_t l = sizeof(tmp_addr);
+    if (getpeername(sock, (struct sockaddr*)&tmp_addr, &l) == 0) {
+        users[found].clientAddr.sin_addr = tmp_addr.sin_addr;
+    }
     pthread_mutex_unlock(&users[found].userMutex);
     pthread_mutex_unlock(&usersListMutex);
     printf("[CONNE] Utente %s riconnesso (Socket %d)\n", id, sock);
@@ -143,3 +147,28 @@ void mess(){
     
 }
 
+void list(int sock){
+    char buf[20];
+    pthread_mutex_lock(&usersListMutex);
+    sprintf(buf,"RLIST %03d+++",registeredUsers);
+    sendTCP(buf, strlen(buf), sock);
+    for(int i=0;i<registeredUsers;++i){
+        sprintf(buf,"LINUM %s+++", users[i].ID);
+        sendTCP(buf, strlen(buf), sock);
+    }
+    pthread_mutex_unlock(&usersListMutex);
+    printf("[LIST] Inviata lista di %d utenti\n", registeredUsers);
+}
+
+void iquit(int sock,int index){
+    sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
+    if(index!=-1)
+    {
+        pthread_mutex_lock(&users[index].userMutex);
+        users[index].socketTCP = -1;
+        pthread_mutex_unlock(&users[index].userMutex);
+        printf("[IQUIT] Utente %s disconnesso correttamente.\n", users[index].ID);
+    }
+    else
+        printf("[IQUIT] Connessione anonima chiusa.\n");
+}
