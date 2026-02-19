@@ -213,6 +213,10 @@ void read_mess(char* str){
     system("clear");
     printf("Inserisci il messaggio da inviare: ");
     fgets(str, 500, stdin);
+    if (strchr(str, '\n') == NULL) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+    }
     str[strcspn(str, "\n")] = '\0';
 }
 
@@ -235,7 +239,7 @@ char* build_message_mess(const char* str, int length){
 }
 
 void mess(client_id* id){
-    char str[200];
+    char str[500];
     read_mess(str);
     id->messLength=strlen(str);
     char* mess=build_message_mess(str, id->messLength);

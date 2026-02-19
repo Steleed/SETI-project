@@ -47,7 +47,7 @@ void* client_handler(void* socket_desc){
         char buf[500];
         int r=read(*sock, buf, 500);
         if (r==0){
-            printf("[LOG] CONNESSIONE PERSA\n");
+            printf("[LOG] CONNESSIONE PERSA \n");
             free(sock);
             return NULL;
         }
@@ -89,13 +89,16 @@ void* client_handler(void* socket_desc){
             //TODO FRIE
             printf("[PARSER] messaggio FRIE? ricevuto\n");
             if (frie(buf, index) == -1){
-                fprintf(stderr, "[FRIE?] richiesta di amicizia fallita");
+                fprintf(stderr, "[FRIE?] richiesta di amicizia fallita\n");
             }
             break;
 
             case 4:
             //TODO MESS
             printf("[PARSER] messaggio MESS? ricevuto\n");
+            if (frie(buf, index) == -1){
+                fprintf(stderr, "[MESS?] invio messaggio fallito");
+            }
             break;
 
             case 5:
@@ -105,7 +108,7 @@ void* client_handler(void* socket_desc){
 
             case 6:
             printf("[PARSER] messaggio LIST? ricevuto\n");
-            list(*sock);
+            list(index);
             break;
             break;
             

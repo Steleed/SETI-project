@@ -44,6 +44,7 @@
 #define FORMAT_OKFRIE "FRIE>+++" //Formato conferma invio richiesta amicizia
 #define FORMAT_NOFRIE "FRIE<+++" //Formato errore invio richiesta  amicizia
 #define FRIE_NOT_UDP 0 //Numero notifica richiesta amicizia
+#define FORMAT_FLUX_FRIE "EIRF> %8s+++" //Formato flusso richiesta amicizia
 
 #define MAX_MESS 200 //Massima lunghezza messaggio da scrivere
 #define MESS_HEADER "MESS?" //Intestazione per invio messaggio a un amico
@@ -51,6 +52,7 @@
 #define FORMAT_MESS "MESS? %8.8s %s+++"
 #define FORMAT_OKMESS "MESS>+++" //Formato conferma invio messaggio
 #define FORMAT_NOMESS "MESS<+++" //Formato errore invio messaggio
+#define FORMAT_FLUX_MESS "SSEM> %8s %203s" //Formato flusso invio messaggio ("+++" implicito in %203s)
 
 #define FLOO_HEADER "FLOO?" //Intestazione per flooding
 #define LENGTH_FLOO 9 //Lunghezza messaggio flooading senza contare la lunghezza del messaggio interno
@@ -61,7 +63,8 @@
 #define FORMAT_LIST "LIST?+++" //Formato messaggio richiesta lista utenti
 #define RLIST_HEADER "RLIST " //Intestazione risposta lista utenti
 #define LENGTH_RLIST 12 //Lunghezza massima messaggio RLIST
-#define FORMAT_RLIST "RLIST %3d+++" //Formato messaggio RLIST
+#define FORMAT_RLIST "RLIST %03d+++" //Formato messaggio RLIST
+#define FORMAT_LINUM "LINUM %8s+++" //Formato messsaggio LINUM
 #define LENGTH_LINUM 17 //Lunghezza messaggio LINUM
 
 #define CONSU_HEADER "CONSU" //Intestazione messaggio consultazione notifiche

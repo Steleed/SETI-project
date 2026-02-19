@@ -7,7 +7,7 @@
 //Coda messaggi
 typedef struct FluxNode {
     char senderID[LENGTH_ID+1]; //Chi ha mandato il messaggio
-    char content[MAX_MESS+1];   //Il testo del messaggio 
+    char content[500];   //Il testo del messaggio 
     char type[LENGTH_UDP_NOT+1]; //Tipo notifica: '3'=Messaggio, '1'=Amicizia OK, '0'=Richiesta Amicizia, ecc.
     struct FluxNode *next;     //Puntatore al prossimo messaggio
 } FluxNode;
@@ -71,5 +71,13 @@ int conne(int, char*);
 //Funzione per verificare la richiesta d'amicizia
 int frie(char*, int);
 
+//Funzione per verificare l'invio di un messaggio a un amico
+int mess(char* , int);
+
+//Funzione che ritorna la lista di tutti gli utenti registrati
+void list(int);
+
+//Funzione per la disconnessione utente
+void iquit(int, int);
 
 #endif

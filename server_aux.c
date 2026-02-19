@@ -132,25 +132,28 @@ int conne(int sock, char* buffer){
 }
 
 //Funzione ausiliaria per inserire un nuovo flusso a userIndex
-void insert_new_flux(int userIndex, char* type, char* sender){
+void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
     FluxNode* flux=malloc(sizeof(FluxNode));
     strcpy(flux->senderID, sender);
     flux->next=NULL;
     pthread_mutex_lock(&users[userIndex].userMutex);
+    users[userIndex].pendingCount++;
+    char b2=(users[userIndex].pendingCount >> 8) & 255;
+    char b1=users[userIndex].pendingCount & 255;
     if (strcmp(type, FRIE_HEADER) == 0){
-        flux->content[0]=0;
-        char b2=(users[userIndex].pendingCount >> 8) & 255;
-        char b1=users[userIndex].pendingCount & 255;
-        sprintf(flux->type, "%d%c%c", FRIE_NOT_UDP, b1, b2);
+        sprintf(flux->type, FORMAT_UDP_NOT, FRIE_NOT_UDP, b1, b2);
+        sprintf(flux->content, FORMAT_FLUX_FRIE, sender);
     }
     else if (strcmp(type, MESS_HEADER) == 0){
-        //TODO mess
+        sprintf(flux->type, FORMAT_UDP_NOT, FRIE_NOT_UDP, b1, b2);
+        sprintf(flux->content, FORMAT_FLUX_MESS, sender, mess);
     }
 
     //! floo in un'altra funzione
-
-    if (users[userIndex].pendingCount == 0){
+    if (users[userIndex].pendingFluxes == NULL){
         users[userIndex].pendingFluxes=flux;
+        printf("[DEBUG] Messaggio aggiunto al flusso = %s\n", users[userIndex].pendingFluxes->content);
+        pthread_mutex_unlock(&users[userIndex].userMutex);
         return;
     }
     FluxNode* aux=users[userIndex].pendingFluxes;
@@ -158,7 +161,7 @@ void insert_new_flux(int userIndex, char* type, char* sender){
         aux=aux->next;
     }
     aux->next=flux;
-    users[userIndex].pendingCount++;
+    printf("[DEBUG] Messaggio aggiunto al flusso = %s", aux->next->content);
     pthread_mutex_unlock(&users[userIndex].userMutex);
 }
     
@@ -183,8 +186,7 @@ int frie(char* buffer, int index){
         return -1;
     }
     sendTCP(FORMAT_OKFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
-    insert_new_flux(friend_index, FRIE_HEADER, users[index].ID);
-    
+    insert_new_flux(friend_index, FRIE_HEADER, users[index].ID, NULL);
     send_udp_notification(friend_index);
     printf("[FRIE?] richiesta d'amicizia inviata all'utente %s\n", friend_id);
     return 0;
@@ -193,26 +195,35 @@ int frie(char* buffer, int index){
 int mess(char* buffer, int index){
     if (index == -1)  return -1;
     char friend_id[LENGTH_ID+1];
-      
-
-
+    strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
     int friend_index=find_user_index(friend_id);
     if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == -1){ //Controllo se: friend_index esiste || non stia cercando di mandare messaggio a se stesso || a un utente non suo amico
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
-
-    
+    char mess[503];
+    strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
+    int l=strlen(mess);
+    if (l > MAX_MESS+3 || (mess[l-1] != '+' && mess[l-2] != '+' && mess[l-3] != '+')){
+        sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+        return -1;
+    }
+    insert_new_flux(friend_index, MESS_HEADER, users[index].ID, mess);
+    send_udp_notification(friend_index);
+    sendTCP(FORMAT_OKMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+    printf("[MESS?] messaggio inviato dall'utente %s all'amico %s\n", users[index].ID, friend_id);
+    return 0;
 }
 
-void list(int sock){
+void list(int index){
+    if (index==-1)  return;
     char buf[20];
     pthread_mutex_lock(&usersListMutex);
-    sprintf(buf,"RLIST %03d+++",registeredUsers);
-    sendTCP(buf, strlen(buf), sock);
+    sprintf(buf, FORMAT_RLIST ,registeredUsers);
+    sendTCP(buf, strlen(buf), users[index].socketTCP);
     for(int i=0;i<registeredUsers;++i){
-        sprintf(buf,"LINUM %s+++", users[i].ID);
-        sendTCP(buf, strlen(buf), sock);
+        sprintf(buf, FORMAT_LINUM , users[i].ID);
+        sendTCP(buf, strlen(buf), users[index].socketTCP);
     }
     pthread_mutex_unlock(&usersListMutex);
     printf("[LIST] Inviata lista di %d utenti\n", registeredUsers);
