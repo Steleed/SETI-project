@@ -229,8 +229,6 @@ char* build_message_mess(const char* str, int length){
         free(buf);
         return NULL;
     }
-    /*sprintf(mess, "%s%s %s", MESS_HEADER, buf, str);
-    memcpy(mess+LENGTH_HEADER+LENGTH_ID+1+length, END_SYMBOL, 3);*/
     sprintf(mess, FORMAT_MESS, buf, str);
     free(buf);
     return mess;

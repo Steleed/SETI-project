@@ -30,6 +30,7 @@ int main(){
         int *sockCaller=(int *)malloc(sizeof(int));
         *sockCaller=accept(sock, (struct sockaddr *)&caller, &size);
         if (*sockCaller >= 0){
+            printf("[LOG] nuova connessione (%s)\n", inet_ntoa(caller.sin_addr));
             pthread_t t1;
             pthread_create(&t1, NULL, client_handler, sockCaller);
             pthread_detach(t1); 
@@ -53,10 +54,10 @@ void* client_handler(void* socket_desc){
         buf[r]='\0';
         printf("[LOG] MESSAGGIO RICEVUTO: ");
         for (int i=0; i<r; i++){
-            if (buf[i]=='\0')
-                printf("0");
-            else
+            if (buf[i] >= 32 && buf[i] <= 126)
                 printf("%c", buf[i]);
+            else 
+                printf("\\x%02X", (unsigned char)buf[i]);
         }
         printf("\n[LOG] Inizio parsing messaggio\n");
         p=parser(buf, r);
@@ -66,7 +67,7 @@ void* client_handler(void* socket_desc){
             printf("[PARSER] messaggio REGIS ricevuto\n");
             index=regis(*sock,buf);
             if (index == -1){
-                fprintf(stderr, "[REGIS] registrazione fallita");
+                fprintf(stderr, "[REGIS] registrazione fallita\n");
                 close(*sock);
                 free(sock);
                 return NULL;
@@ -75,7 +76,8 @@ void* client_handler(void* socket_desc){
 
             case 2:
             printf("[PARSER] messaggio CONNE ricevuto\n");
-            if (conne(*sock, buf) == -1){
+            index=conne(*sock, buf);
+            if (index == -1){
                 fprintf(stderr, "[CONNE] connessione fallita");
                 close(*sock);
                 free(sock);
@@ -86,6 +88,9 @@ void* client_handler(void* socket_desc){
             case 3:
             //TODO FRIE
             printf("[PARSER] messaggio FRIE? ricevuto\n");
+            if (frie(buf, index) == -1){
+                fprintf(stderr, "[FRIE?] richiesta di amicizia fallita");
+            }
             break;
 
             case 4:
@@ -115,7 +120,6 @@ void* client_handler(void* socket_desc){
             close(*sock);
             free(sock);
             return NULL;
-            break;
     
         default:
             printf("[PARSER] Messaggio non valido\n");

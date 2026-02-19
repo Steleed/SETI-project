@@ -1,6 +1,5 @@
 #include "server.h"
 
-//Funzione ausiliaria per il parsing dei messaggi ricevuti
 int parser(char mess[], int l){
     if (l < LENGTH_HEADER) return -1;
     if (strncmp(mess, REGIS_HEADER, LENGTH_HEADER) == 0) return 1;
@@ -14,9 +13,23 @@ int parser(char mess[], int l){
     return -1;
 }
 
-//Funzione ausiliaria per mandare i messaggi al client
 void sendTCP(char *type, int size,  int sock){
     write(sock, type, size);
+}
+
+//Funzione ausiliaria per verificare che un utente friend_id sia amico di un utente users[index]
+int is_friend(int index, char* friend_id){
+    pthread_mutex_lock(&users[index].userMutex);
+    Friends* aux=users[index].friends;
+    while (aux != NULL){
+        if (strcmp(aux->friendID, users[index].ID) == 0){
+            pthread_mutex_unlock(&users[index].userMutex);
+            return 0;
+        }
+        aux=aux->next;
+    }
+    pthread_mutex_unlock(&users[index].userMutex);
+    return -1;
 }
 
 int find_user_index(char* id){
@@ -62,7 +75,7 @@ int regis(int sock, char* buffer){
     users[i].password=password; 
     strncpy(users[i].udpPort, port, LENGTH_UDP_PORT);
     users[i].socketTCP=sock;
-    users[i].pendingMessages=NULL;
+    users[i].pendingFluxes=NULL;
     users[i].pendingCount=0;
 
     socklen_t len = sizeof(users[i].clientAddr);
@@ -117,33 +130,78 @@ int conne(int sock, char* buffer){
     sendTCP(FORMAT_HELLO,LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
     return found;
 }
+
+//Funzione ausiliaria per inserire un nuovo flusso a userIndex
+void insert_new_flux(int userIndex, char* type, char* sender){
+    FluxNode* flux=malloc(sizeof(FluxNode));
+    strcpy(flux->senderID, sender);
+    flux->next=NULL;
+    pthread_mutex_lock(&users[userIndex].userMutex);
+    if (strcmp(type, FRIE_HEADER) == 0){
+        flux->content[0]=0;
+        char b2=(users[userIndex].pendingCount >> 8) & 255;
+        char b1=users[userIndex].pendingCount & 255;
+        sprintf(flux->type, "%d%c%c", FRIE_NOT_UDP, b1, b2);
+    }
+    else if (strcmp(type, MESS_HEADER) == 0){
+        //TODO mess
+    }
+
+    //! floo in un'altra funzione
+
+    if (users[userIndex].pendingCount == 0){
+        users[userIndex].pendingFluxes=flux;
+        return;
+    }
+    FluxNode* aux=users[userIndex].pendingFluxes;
+    while (aux->next != NULL){
+        aux=aux->next;
+    }
+    aux->next=flux;
+    users[userIndex].pendingCount++;
+    pthread_mutex_unlock(&users[userIndex].userMutex);
+}
     
 void send_udp_notification(int userIndex){
     pthread_mutex_lock(&users[userIndex].userMutex);
-    sendto(socketUDP, users[userIndex].pendingMessages->content, strlen(users[userIndex].pendingMessages->content), 
+    sendto(socketUDP, users[userIndex].pendingFluxes->type, LENGTH_UDP_NOT, 
         0, (struct sockaddr *)&users[userIndex].clientAddr, (socklen_t)sizeof(struct sockaddr_in));
     pthread_mutex_unlock(&users[userIndex].userMutex);  
 }
 
 
 int frie(char* buffer, int index){
-    if (index == -1)  return -1;
-    char friend_id[LENGTH_ID+1];
-    if (sscanf(buffer, FORMAT_FRIE, friend_id) != 1){
+    if (index == -1 || strlen(buffer) != LENGTH_FRIE || strncmp(buffer+LENGTH_FRIE-LENGTH_END_SYMBOL, END_SYMBOL, LENGTH_END_SYMBOL) != 0){
         sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
+    char friend_id[LENGTH_ID+1];
+    strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
     int friend_index=find_user_index(friend_id);
-    if (friend_index==-1 || friend_index == index){ //Controllo se friend_index esiste e che non stia cercando di richiedere amicizia a se stesso
+    if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == 0){ //Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
         sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
     sendTCP(FORMAT_OKFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
-    send_udp_notification(index);
-    //TODO inserimento flusso al destinatario
+    insert_new_flux(friend_index, FRIE_HEADER, users[index].ID);
+    
+    send_udp_notification(friend_index);
+    printf("[FRIE?] richiesta d'amicizia inviata all'utente %s\n", friend_id);
+    return 0;
 }
 
-void mess(){
+int mess(char* buffer, int index){
+    if (index == -1)  return -1;
+    char friend_id[LENGTH_ID+1];
+      
+
+
+    int friend_index=find_user_index(friend_id);
+    if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == -1){ //Controllo se: friend_index esiste || non stia cercando di mandare messaggio a se stesso || a un utente non suo amico
+        sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+        return -1;
+    }
+
     
 }
 

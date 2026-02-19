@@ -5,12 +5,19 @@
 
 //STRUTTURE DATI
 //Coda messaggi
-typedef struct MessageNode {
+typedef struct FluxNode {
     char senderID[LENGTH_ID+1]; //Chi ha mandato il messaggio
     char content[MAX_MESS+1];   //Il testo del messaggio 
-    char type;                    //Tipo notifica: '3'=Messaggio, '1'=Amicizia OK, '0'=Richiesta Amicizia, ecc.
-    struct MessageNode *next;     //Puntatore al prossimo messaggio
-} MessageNode;
+    char type[LENGTH_UDP_NOT+1]; //Tipo notifica: '3'=Messaggio, '1'=Amicizia OK, '0'=Richiesta Amicizia, ecc.
+    struct FluxNode *next;     //Puntatore al prossimo messaggio
+} FluxNode;
+
+//Amici
+typedef struct Friends{
+    char friendID[LENGTH_ID+1]; //ID dell'amico
+    int friend_index; //Index dell'amico dentro il database del server
+    struct Friends* next; //Puntatore al prossimo amico
+} Friends;
 
 //Struttura Utente 
 typedef struct {
@@ -20,11 +27,12 @@ typedef struct {
     char udpPort[LENGTH_UDP_PORT+1]; 
     struct sockaddr_in clientAddr; //IP utente
     int socketTCP;                 //> 0 se connesso, -1 se offline               
-    char friends[MAX_USERS][LENGTH_ID + 1]; //Lista degli ID degli amici
+    //char friends[MAX_USERS][LENGTH_ID + 1]; //Lista degli ID degli amici
+    Friends* friends;              //Testa della lista degli amici
     int friendsCount;              //Numero amici
     //Gestione Messaggi 
-    MessageNode *pendingMessages;  //Testa della lista concatenata
-    int pendingCount;              //Numero messaggi in coda 
+    FluxNode *pendingFluxes;  //Testa della lista dei flussi in attesa
+    u_int16_t pendingCount;     //Numero flussi in coda 
     pthread_mutex_t userMutex;
 } Client;
 
@@ -42,6 +50,12 @@ void init_server_structures();
 //Funzione principale eseguita dal Thread per ogni client
 void* client_handler(void* socket_desc);
 
+//Funzione per fare il parsing dei messaggi ricevuti
+int parser(char*, int);
+
+//Funzione per mandare messaggi di risposta all'utente
+void sendTCP(char *type, int size,  int sock);
+
 //Funzione per inviare la notifica UDP al client
 void send_udp_notification(int userIndex);
 
@@ -53,6 +67,9 @@ int regis(int, char*);
 
 //Funzione per verificare la connessione (restituisce l'indice o -1)
 int conne(int, char*);
+
+//Funzione per verificare la richiesta d'amicizia
+int frie(char*, int);
 
 
 #endif
