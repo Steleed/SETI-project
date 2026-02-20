@@ -46,6 +46,15 @@
 #define FRIE_NOT_UDP 0 //Numero notifica richiesta amicizia
 #define FLUX_FRIE_HEADER "EIRF>" //Intestazione flusso richiesta amicizia
 #define FORMAT_FLUX_FRIE "EIRF> %8s+++" //Formato flusso richiesta amicizia
+#define FRIEN_HEADER "FRIEN" //Intestazione flusso accettazione richiesta amicizia
+#define FORMAT_FRIEN "FRIEN %s+++" //Formato flusso accettazione richiesta amicizia
+#define NOFRI_HEADER "NOFRI" //Intestazione flusso rifiuto richiesta amicizia
+#define FORMAT_NOFRI "NOFRI %s+++" //Formato flusso rifiuto richiesta amicizia
+#define OKIRF_HEADER "OKIRF" //Intestazione accettazione richiesta amicizia
+#define FORMAT_OKIRF "OKIRF+++" //Formato accettazione richiesta amicizia
+#define NOKRF_HEADER "NOKRF" //Intestazione rifiuto richiesta amicizia
+#define FORMAT_NOKRF "NOKRF+++" //Formato rifiuto richiesta amicizia
+
 
 #define MAX_MESS 200 //Massima lunghezza messaggio da scrivere
 #define MESS_HEADER "MESS?" //Intestazione per invio messaggio a un amico
@@ -74,6 +83,7 @@
 #define CONSU_HEADER "CONSU" //Intestazione messaggio consultazione notifiche
 #define LENGTH_CONSU 8 //Lunghezza messaggio CONSU
 #define FORMAT_CONSU "CONSU+++" //Formato messaggio consultazione
+#define FORMAT_NOCON "NOCON++" //Formato per segnalare che non ci sono flussi
 
 #define IQUIT_HEADER "IQUIT"  //Intestazione messaggio di disconnessione
 #define LENGTH_IQUIT 8 //Lunghezza messaggio disconnessione

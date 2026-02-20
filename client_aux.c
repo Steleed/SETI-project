@@ -128,7 +128,7 @@ void sendTcp(client_id* id, char* mess, char type[]){
     char buf[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
     int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL);
     buf[r]='\0';
-    printf("%s\n", buf);
+    printf("[LOG]%s\n", buf);
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
         free(id);
@@ -155,6 +155,7 @@ char* build_message_reg(client_id *id){
 void registration(client_id *id){
     char *mess=build_message_reg(id);
     sendTcp(id, mess, REGIS_HEADER);
+    printf("Registrazione avvenuta con successo!\n");
     free(mess);
 }
 
@@ -175,6 +176,7 @@ char *build_message_conn(const client_id *id){
 void connection(client_id *id){
     char *mess=build_message_conn(id);
     sendTcp(id, mess, CONNE_HEADER);
+    printf("Sei connesso!\n");
     free(mess);
 }
 
@@ -276,15 +278,19 @@ void read_list(int fd){
     int r=read(fd, buf, LENGTH_RLIST);
     buf[r]='\0';
     int num_users;
-    printf("%s\n", buf);
+    printf("[LOG}%s\n", buf);
     sscanf(buf, FORMAT_RLIST, &num_users);
     printf("DEBUG: numero utenti = %d\n", num_users);
+    printf("Lettura lista di %d utenti:\n", num_users);
     char usr[LENGTH_LINUM+1];
+    char id[LENGTH_ID+1];
     for (int i=0;i<num_users;i++){
         r=read(fd, usr, LENGTH_LINUM);
         usr[r]='\0';
-        printf("%s\n", usr);
-        //sleep(1);
+        printf("[LOG]%s\n", usr);
+        sscanf(usr, FORMAT_LINUM, id);
+        printf("%s\n", id);
+        sleep(1);
     }
 }
 
@@ -306,9 +312,31 @@ int parse_consu(char* buf){
     if (strncmp(buf, FLUX_FRIE_HEADER, LENGTH_HEADER) == 0)  return 1;
     if (strncmp(buf, FLUX_MESS_HEADER, LENGTH_HEADER) == 0)  return 2;
     if (strncmp(buf, FLUX_FLOO_HEADER, LENGTH_HEADER) == 0)  return 3;
-    //TODO accettazione/rifiuto amicizia
+    if (strncmp(buf, FRIEN_HEADER, LENGTH_HEADER) == 0)  return 4;
+    if (strncmp(buf, NOFRI_HEADER, LENGTH_HEADER) == 0)  return 5;
     else
         return -1; //Non ci sono flussi
+}
+
+void friend_request(int fd){
+    char* tmp=malloc(100*sizeof(char));
+    int p;
+    do{
+        fgets(tmp, 100, stdin);
+        p=atoi(tmp);
+    }
+    while (p != 1 && p != 2);
+    free(tmp);
+    if (p == 1){
+        write(fd, FORMAT_OKIRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
+    }
+    else{
+        write(fd, FORMAT_NOKRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
+    }
+    char ack[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
+    int r=read(fd, ack, LENGTH_HEADER+LENGTH_END_SYMBOL);
+    ack[r]='\0';
+    printf("%s\n", ack);
 }
 
 void read_consu(int fd){
@@ -319,11 +347,47 @@ void read_consu(int fd){
     int p=parse_consu(buf);
     switch (p)
     {
-    case 1:
-        /* code */
+    case 1: {
+        //TODO flux frie
+        char id[LENGTH_ID+1];
+        sscanf(buf, FORMAT_FLUX_FRIE, id);
+        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta", id);
+        friend_request(fd);
         break;
+    }
     
-    default:
+    case 2: {
+        char mess[MAX_MESS+1];
+        char id[LENGTH_ID+1];
+        sscanf(buf, FORMAT_FLUX_MESS, id, mess);
+        printf("Messaggio da parte di %s:\n%s", id, mess);
+        break;
+    }
+    
+    case 3: {
+        char floo[MAX_MESS+1];
+        char id[LENGTH_ID+1];
+        sscanf(buf, FORMAT_FLUX_MESS, id, floo);
+        printf("Messaggio di flooding da parte di %s:\n%s", id, floo);
+        break;
+    }
+    
+    case 4: {
+        char id[LENGTH_ID+1];
+        sscanf(buf, FORMAT_FRIEN, id);
+        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", id);
+        break;
+    }
+    
+    case 5: {
+        char id[LENGTH_ID+1];
+        sscanf(buf, FORMAT_NOFRI, id);
+        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", id);        
+        break;
+    }
+    
+    default: 
+        printf("Non ci sono flussi da consultare\n");
         break;
     }
 }

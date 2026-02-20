@@ -88,6 +88,7 @@ int main(int argc, char* argv[]){
             break;
         case 5:
             //TODO consultazione
+            consu(id);
             break;
         case 6:
             //TODO disconnessione
