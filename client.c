@@ -20,7 +20,8 @@ int main(int argc, char* argv[]){
     while (!check_MPD(&p));
     free(tmp);
     id->MDP=htole16(p); //Password client
-    id->notifications=0;
+    id->num_notifications=0;
+    //?id->notifications=NULL;
     system("clear");
     
 
@@ -59,8 +60,8 @@ int main(int argc, char* argv[]){
         //!Mutex?
         //Controllo notifiche udp
         pthread_mutex_lock(&id->mtx);
-        if (id->notifications>0){
-            printf("Hai %d notifiche\n", id->notifications);
+        if (id->num_notifications>0){
+            printf("Hai %d notifiche\n", id->num_notifications);
         }
         pthread_mutex_unlock(&id->mtx);
         sleep(1);

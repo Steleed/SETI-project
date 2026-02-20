@@ -44,6 +44,7 @@
 #define FORMAT_OKFRIE "FRIE>+++" //Formato conferma invio richiesta amicizia
 #define FORMAT_NOFRIE "FRIE<+++" //Formato errore invio richiesta  amicizia
 #define FRIE_NOT_UDP 0 //Numero notifica richiesta amicizia
+#define FLUX_FRIE_HEADER "EIRF>" //Intestazione flusso richiesta amicizia
 #define FORMAT_FLUX_FRIE "EIRF> %8s+++" //Formato flusso richiesta amicizia
 
 #define MAX_MESS 200 //Massima lunghezza messaggio da scrivere
@@ -52,11 +53,14 @@
 #define FORMAT_MESS "MESS? %8.8s %s+++"
 #define FORMAT_OKMESS "MESS>+++" //Formato conferma invio messaggio
 #define FORMAT_NOMESS "MESS<+++" //Formato errore invio messaggio
-#define FORMAT_FLUX_MESS "SSEM> %8s %203s" //Formato flusso invio messaggio ("+++" implicito in %203s)
+#define FLUX_MESS_HEADER "SSEM>" //Intestazione flusso invio messaggio
+#define FORMAT_FLUX_MESS "SSEM> %8s %200s+++" //Formato flusso invio messaggio
 
 #define FLOO_HEADER "FLOO?" //Intestazione per flooding
 #define LENGTH_FLOO 9 //Lunghezza messaggio flooading senza contare la lunghezza del messaggio interno
 #define FORMAT_FLOO "FLOO? %s+++" //Formato messaggio flooding
+#define FLUX_FLOO_HEADER "OOLF>" //Intestazione flusso flooding
+#define FORMAT_FLUX_FLOO "SSEM> %8s %200s+++" //Formato flusso flooding
 
 #define LIST_HEADER "LIST?" //Intestazione per lista utenti
 #define LENGTH_LIST 8 //Lunghezza messaggio per richiesta lista utenti
@@ -68,6 +72,8 @@
 #define LENGTH_LINUM 17 //Lunghezza messaggio LINUM
 
 #define CONSU_HEADER "CONSU" //Intestazione messaggio consultazione notifiche
+#define LENGTH_CONSU 8 //Lunghezza messaggio CONSU
+#define FORMAT_CONSU "CONSU+++" //Formato messaggio consultazione
 
 #define IQUIT_HEADER "IQUIT"  //Intestazione messaggio di disconnessione
 #define LENGTH_IQUIT 8 //Lunghezza messaggio disconnessione

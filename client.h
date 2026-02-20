@@ -3,6 +3,12 @@
 
 #include "project.h"
 
+/*typedef struct{
+    char udp_notification_type[LENGTH_UDP_NOT+1];
+    Notifications *next;
+} Notifications;*/  //?SERVE
+
+
 // Struct identificativo client
 typedef struct{
     char ID[LENGTH_ID+1]; //Nome identificativo
@@ -10,7 +16,8 @@ typedef struct{
     uint16_t MDP; //Password in little-endian
     int fdTCP; //Socket TCP
     int fdUDP; //Socket TCP
-    int notifications; //Numero notifiche udp
+    //?Notifications* notifications; //Struttura contenente tutte le notifiche
+    int num_notifications; //Numero notifiche udp
     int messLength; //Lunghezza messaggio da inviare ad un amico/flood
     pthread_mutex_t mtx; //Mutex per le notifiche UDP
 } client_id;
@@ -61,7 +68,10 @@ void read_list(int);
 void iquit(client_id *);
 
 //Invia richiesta CONSU al server
-//TODO CONSU
+void consu(client_id*);
+
+//Legge il flusso inviato dal server dopo CONSU
+void read_consu(int);
 
 //Thread per ascoltare su porta UDP
 void* udp_listen(void*);

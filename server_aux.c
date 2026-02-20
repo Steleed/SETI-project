@@ -1,7 +1,7 @@
 #include "server.h"
 
 int parser(char mess[], int l){
-    if (l < LENGTH_HEADER) return -1;
+    if (l < LENGTH_HEADER+LENGTH_END_SYMBOL) return -1;
     if (strncmp(mess, REGIS_HEADER, LENGTH_HEADER) == 0) return 1;
     if (strncmp(mess, CONNE_HEADER, LENGTH_HEADER) == 0) return 2;
     if (strncmp(mess, FRIE_HEADER, LENGTH_HEADER) == 0) return 3;
@@ -203,13 +203,15 @@ int mess(char* buffer, int index){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
-    char mess[503];
-    strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
+    char tmp[503];
+    strcpy(tmp, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
     int l=strlen(mess);
-    if (l > MAX_MESS+3 || (mess[l-1] != '+' || mess[l-2] != '+' || mess[l-3] != '+')){
+    if (l > MAX_MESS+3 || (tmp[l-1] != '+' || tmp[l-2] != '+' || tmp[l-3] != '+')){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
+    char mess[500];
+    strncpy(mess, tmp, l-3);
     insert_new_flux(friend_index, MESS_HEADER, users[index].ID, mess);
     send_udp_notification(friend_index);
     sendTCP(FORMAT_OKMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);

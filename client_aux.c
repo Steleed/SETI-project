@@ -120,8 +120,10 @@ void sendTcp(client_id* id, char* mess, char type[]){
     else if (strcmp(type, IQUIT_HEADER) ==0 ){
         write(id->fdTCP, mess, LENGTH_IQUIT);
     }
-    else{
-        //TODO CONSU
+    else{//Consu
+        write(id->fdTCP, mess, LENGTH_CONSU);
+        read_consu(id->fdTCP);
+        return;
     }
     char buf[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
     int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL);
@@ -271,19 +273,19 @@ void floo(client_id* id){
 
 void read_list(int fd){
     char buf[LENGTH_RLIST+1];
-        int r=read(fd, buf, LENGTH_RLIST);
-        buf[r]='\0';
-        int num_users;
-        printf("%s\n", buf);
-        sscanf(buf, FORMAT_RLIST, &num_users);
-        printf("DEBUG: numero utenti = %d\n", num_users);
-        char usr[LENGTH_LINUM+1];
-        for (int i=0;i<num_users;i++){
-            r=read(fd, usr, LENGTH_LINUM);
-            usr[r]='\0';
-            printf("%s\n", usr);
-            //sleep(1);
-        }
+    int r=read(fd, buf, LENGTH_RLIST);
+    buf[r]='\0';
+    int num_users;
+    printf("%s\n", buf);
+    sscanf(buf, FORMAT_RLIST, &num_users);
+    printf("DEBUG: numero utenti = %d\n", num_users);
+    char usr[LENGTH_LINUM+1];
+    for (int i=0;i<num_users;i++){
+        r=read(fd, usr, LENGTH_LINUM);
+        usr[r]='\0';
+        printf("%s\n", usr);
+        //sleep(1);
+    }
 }
 
 //Funzione ausiliaria per costruire messaggio LIST?
@@ -297,6 +299,44 @@ void list(client_id* id){
     char* mess=build_message_list();
     sendTcp(id, mess, LIST_HEADER);
     free(mess);
+}
+
+//Funzione ausliaria per fare il parsing delle notifiche
+int parse_consu(char* buf){
+    if (strncmp(buf, FLUX_FRIE_HEADER, LENGTH_HEADER) == 0)  return 1;
+    if (strncmp(buf, FLUX_MESS_HEADER, LENGTH_HEADER) == 0)  return 2;
+    if (strncmp(buf, FLUX_FLOO_HEADER, LENGTH_HEADER) == 0)  return 3;
+    //TODO accettazione/rifiuto amicizia
+    else
+        return -1; //Non ci sono flussi
+}
+
+void read_consu(int fd){
+    char buf[503];
+    int r=read(fd, buf, 503);
+    buf[r]='\0';
+    printf("%s\n", buf);
+    int p=parse_consu(buf);
+    switch (p)
+    {
+    case 1:
+        /* code */
+        break;
+    
+    default:
+        break;
+    }
+}
+
+char* build_message_consu(){
+    char* mess=malloc(LENGTH_CONSU+1);
+    strcpy(mess, FORMAT_CONSU);
+    return mess;
+}
+
+void consu(client_id* id){
+    char* mess=build_message_consu();
+    sendTcp(id, mess, CONSU_HEADER);
 }
 
 char* build_message_iquit(){
@@ -320,7 +360,7 @@ void* udp_listen(void* ptr){
         buf[rec]='\0';
         //!Mutex?
         pthread_mutex_lock(&id->mtx);
-        id->notifications++;
+        id->num_notifications++;
         pthread_mutex_unlock(&id->mtx);
     }
 }
