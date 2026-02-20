@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
  
     int choice;
     while (1){    
-        sleep(2);
+        sleep(1);
         system("clear");        
         //!Mutex?
         //Controllo notifiche udp
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]){
             printf("Hai %d notifiche\n", id->notifications);
         }
         pthread_mutex_unlock(&id->mtx);
-        sleep(2);
+        sleep(1);
         system("clear");
 
         choice=print_menu();

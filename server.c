@@ -78,7 +78,7 @@ void* client_handler(void* socket_desc){
             printf("[PARSER] messaggio CONNE ricevuto\n");
             index=conne(*sock, buf);
             if (index == -1){
-                fprintf(stderr, "[CONNE] connessione fallita");
+                fprintf(stderr, "[CONNE] connessione fallita\n");
                 close(*sock);
                 free(sock);
                 return NULL;
@@ -96,8 +96,8 @@ void* client_handler(void* socket_desc){
             case 4:
             //TODO MESS
             printf("[PARSER] messaggio MESS? ricevuto\n");
-            if (frie(buf, index) == -1){
-                fprintf(stderr, "[MESS?] invio messaggio fallito");
+            if (mess(buf, index) == -1){
+                fprintf(stderr, "[MESS?] invio messaggio fallito\n");
             }
             break;
 

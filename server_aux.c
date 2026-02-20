@@ -22,7 +22,7 @@ int is_friend(int index, char* friend_id){
     pthread_mutex_lock(&users[index].userMutex);
     Friends* aux=users[index].friends;
     while (aux != NULL){
-        if (strcmp(aux->friendID, users[index].ID) == 0){
+        if (strcmp(aux->friendID, friend_id) == 0){
             pthread_mutex_unlock(&users[index].userMutex);
             return 0;
         }
@@ -180,6 +180,7 @@ int frie(char* buffer, int index){
     }
     char friend_id[LENGTH_ID+1];
     strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
+    friend_id[LENGTH_ID] = '\0';
     int friend_index=find_user_index(friend_id);
     if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == 0){ //Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
         sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
@@ -196,6 +197,7 @@ int mess(char* buffer, int index){
     if (index == -1)  return -1;
     char friend_id[LENGTH_ID+1];
     strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
+    friend_id[LENGTH_ID] = '\0';
     int friend_index=find_user_index(friend_id);
     if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == -1){ //Controllo se: friend_index esiste || non stia cercando di mandare messaggio a se stesso || a un utente non suo amico
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
@@ -204,7 +206,7 @@ int mess(char* buffer, int index){
     char mess[503];
     strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
     int l=strlen(mess);
-    if (l > MAX_MESS+3 || (mess[l-1] != '+' && mess[l-2] != '+' && mess[l-3] != '+')){
+    if (l > MAX_MESS+3 || (mess[l-1] != '+' || mess[l-2] != '+' || mess[l-3] != '+')){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
