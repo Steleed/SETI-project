@@ -182,7 +182,7 @@ int frie(char* buffer, int index){
     strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
     friend_id[LENGTH_ID] = '\0';
     int friend_index=find_user_index(friend_id);
-    if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == 0){ //Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
+    if (friend_index==-1 || friend_index == index || users[friend_index].socketTCP == -1 || is_friend(index, friend_id) == 0){ //Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
         sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
@@ -199,7 +199,7 @@ int mess(char* buffer, int index){
     strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
     friend_id[LENGTH_ID] = '\0';
     int friend_index=find_user_index(friend_id);
-    if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == -1){ //Controllo se: friend_index esiste || non stia cercando di mandare messaggio a se stesso || a un utente non suo amico
+    if (friend_index==-1 || friend_index == index || users[friend_index].socketTCP == -1 || is_friend(index, friend_id) == -1){ //Controllo se: friend_index esiste || non stia cercando di mandare messaggio a se stesso || a un utente non suo amico
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
