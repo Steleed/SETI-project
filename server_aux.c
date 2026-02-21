@@ -205,7 +205,7 @@ int mess(char* buffer, int index){
     }
     char tmp[503];
     strcpy(tmp, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
-    int l=strlen(mess);
+    int l=strlen(tmp);
     if (l > MAX_MESS+3 || (tmp[l-1] != '+' || tmp[l-2] != '+' || tmp[l-3] != '+')){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
@@ -231,6 +231,29 @@ void list(int index){
     }
     pthread_mutex_unlock(&usersListMutex);
     printf("[LIST] Inviata lista di %d utenti\n", registeredUsers);
+}
+
+void consu(int sock,int index){ 
+    if(index==-1) 
+        return;
+    pthread_mutex_lock(&users[index].userMutex);
+    if (users[index].pendingFluxes==NULL) { //caso vuoto
+        pthread_mutex_unlock(&users[index].userMutex);
+        sendTCP(FORMAT_NOCON,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
+        return;
+    }
+    FluxNode* flux=users[index].pendingFluxes; //prendo
+    char content[500];
+    strcpy(content,flux->content);
+    char senderID[LENGTH_ID+1];
+    strcpy(senderID,flux->senderID);
+
+    users[index].pendingFluxes=flux->next; //rimozione
+    if (users[index].pendingCount>0)
+        users[index].pendingCount--;
+    free(flux);
+    pthread_mutex_unlock(&users[index].userMutex);
+    sendTCP(content, strlen(content), sock);
 }
 
 void iquit(int sock,int index){

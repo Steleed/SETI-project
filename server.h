@@ -80,4 +80,7 @@ void list(int);
 //Funzione per la disconnessione utente
 void iquit(int, int);
 
+//Funzione per consultazione notifiche
+void consu(int, int);
+
 #endif

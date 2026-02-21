@@ -44,6 +44,7 @@ int main(int argc, char* argv[]){
             break;
         case 3:
             iquit(id);
+            break;
         default:
             fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");
             free(id);
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]){
         switch (choice)
         {
         case 1: 
-            //TODO amiciaiza
+            //TODO amicizia
             friend(id);
             break;
         case 2:
@@ -83,7 +84,6 @@ int main(int argc, char* argv[]){
             floo(id);
             break;
         case 4:
-            //TODO elenco clienti
             list(id);
             break;
         case 5:
@@ -91,8 +91,8 @@ int main(int argc, char* argv[]){
             consu(id);
             break;
         case 6:
-            //TODO disconnessione
             iquit(id);
+            break;
         default:
             puts("ERRORE! Numero fuori dai limiti.\nRitenta fra poco");
             break;

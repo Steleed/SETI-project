@@ -69,7 +69,7 @@
 #define LENGTH_FLOO 9 //Lunghezza messaggio flooading senza contare la lunghezza del messaggio interno
 #define FORMAT_FLOO "FLOO? %s+++" //Formato messaggio flooding
 #define FLUX_FLOO_HEADER "OOLF>" //Intestazione flusso flooding
-#define FORMAT_FLUX_FLOO "SSEM> %8s %200s+++" //Formato flusso flooding
+#define FORMAT_FLUX_FLOO "OOLF> %8s %200s+++" //Formato flusso flooding
 
 #define LIST_HEADER "LIST?" //Intestazione per lista utenti
 #define LENGTH_LIST 8 //Lunghezza messaggio per richiesta lista utenti
@@ -83,7 +83,7 @@
 #define CONSU_HEADER "CONSU" //Intestazione messaggio consultazione notifiche
 #define LENGTH_CONSU 8 //Lunghezza messaggio CONSU
 #define FORMAT_CONSU "CONSU+++" //Formato messaggio consultazione
-#define FORMAT_NOCON "NOCON++" //Formato per segnalare che non ci sono flussi
+#define FORMAT_NOCON "NOCON+++" //Formato per segnalare che non ci sono flussi
 
 #define IQUIT_HEADER "IQUIT"  //Intestazione messaggio di disconnessione
 #define LENGTH_IQUIT 8 //Lunghezza messaggio disconnessione

@@ -115,6 +115,7 @@ void* client_handler(void* socket_desc){
             case 7:
             //TODO CONSU
             printf("[PARSER] messaggio CONSU ricevuto\n");
+            consu(*sock,index);
             break;
 
             case 8:
