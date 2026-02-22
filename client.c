@@ -1,5 +1,6 @@
 #include "client.h"
 
+char ip_server[INET_ADDRSTRLEN];
 
 int main(int argc, char* argv[]){
     //Creazione struct identificatore cliente

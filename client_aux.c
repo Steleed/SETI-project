@@ -32,7 +32,7 @@ int tcpSock(client_id* id){
     struct sockaddr_in address_sock_tcp;
     address_sock_tcp.sin_family=AF_INET;
     address_sock_tcp.sin_port=htons(6769);
-    //TODO prendere l'ip del server
+    //TODO getaddrinfo
     inet_aton("127.0.0.1", &address_sock_tcp.sin_addr);
     id->fdTCP=socket(PF_INET, SOCK_STREAM, 0);
     if (id->fdTCP == EOF){
@@ -53,6 +53,7 @@ int tcpSock(client_id* id){
         sleep(1);
         system("clear");
     }
+    inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server));
     return 0;
 }
 
@@ -96,28 +97,28 @@ int print_menu(){
 }
 
 //Funzione ausiliaria per mandare messaggio tcp al server
-void sendTcp(client_id* id, char* mess, char type[]){
-    if (strcmp(type, REGIS_HEADER) == 0){
+void sendTcp(client_id* id, char* mess){
+    if (strncmp(mess, REGIS_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_REGIS);
     }
-    else if (strcmp(type, CONNE_HEADER) == 0){
+    else if (strncmp(mess, CONNE_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_CONNE);
     }
-    else if (strcmp(type, FRIE_HEADER) == 0){
+    else if (strncmp(mess, FRIE_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_FRIE);
     }
-    else if (strcmp(type, MESS_HEADER) == 0){
+    else if (strncmp(mess, MESS_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_MESS+id->messLength);
     }
-    else if (strcmp(type, FLOO_HEADER) == 0){
+    else if (strncmp(mess, FLOO_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_FLOO+id->messLength);
     }
-    else if (strcmp(type, LIST_HEADER) == 0){
+    else if (strncmp(mess, LIST_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_LIST);
         read_list(id->fdTCP);
         return;
     }
-    else if (strcmp(type, IQUIT_HEADER) ==0 ){
+    else if (strncmp(mess, IQUIT_HEADER, LENGTH_HEADER) ==0 ){
         write(id->fdTCP, mess, LENGTH_IQUIT);
     }
     else{//Consu
@@ -139,13 +140,6 @@ void sendTcp(client_id* id, char* mess, char type[]){
 
 //Funzione ausiliaria per costurire messaggio REGIS
 char* build_message_reg(client_id *id){
-    /*char *mess=malloc(LENGTH_REGIS);
-    int i=sprintf(mess, "%s %s %s ", REGIS_HEADER, id->ID, id->PORT);
-    mess[i]=id->MDP & 255;
-    i++;
-    mess[i]=(id->MDP >> 8) & 255;
-    printf("DEBUG: MDP in little-endian = 0x%02x 0x%02x\n", mess[i-1], mess[i]);
-    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);*/
     char *mess=malloc(LENGTH_REGIS+1);
     sprintf(mess, FORMAT_REGIS, id->ID, id->PORT, id->MDP & 255, (id->MDP >> 8) & 255);
 
@@ -154,19 +148,13 @@ char* build_message_reg(client_id *id){
 
 void registration(client_id *id){
     char *mess=build_message_reg(id);
-    sendTcp(id, mess, REGIS_HEADER);
+    sendTcp(id, mess);
     printf("Registrazione avvenuta con successo!\n");
     free(mess);
 }
 
 //Funzione ausiliaria per costurire messaggio CONNE
 char *build_message_conn(const client_id *id){
-    /*char *mess=malloc(LENGTH_CONNE);
-    int i=sprintf(mess, "%s %s ", CONNE_HEADER, id->ID);
-    mess[i]=id->MDP & 255;
-    i++;
-    mess[i]=(id->MDP >> 8) & 255;
-    memcpy(mess+i+1, END_SYMBOL, LENGTH_END_SYMBOL);*/
     char *mess=malloc(LENGTH_REGIS+1);
     sprintf(mess, FORMAT_CONNE, id->ID, id->MDP & 255, (id->MDP >> 8) & 255);
 
@@ -175,7 +163,7 @@ char *build_message_conn(const client_id *id){
 
 void connection(client_id *id){
     char *mess=build_message_conn(id);
-    sendTcp(id, mess, CONNE_HEADER);
+    sendTcp(id, mess);
     printf("Sei connesso!\n");
     free(mess);
 }
@@ -193,10 +181,6 @@ char *build_message_frie(){
         free(buf);
         return NULL;
     }
-    /*char frie_id[LENGTH_ID+1];
-    strncpy(frie_id, buf, LENGTH_ID);
-    sprintf(mess, "%s%s", FRIE_HEADER, frie_id);
-    memcpy(mess+LENGTH_HEADER+LENGTH_ID, END_SYMBOL, LENGTH_END_SYMBOL);*/
     sprintf(mess, FORMAT_FRIE, buf);
     free(buf);
     return mess;
@@ -208,7 +192,7 @@ void friend(client_id* id){
         fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
         return;
     }
-    sendTcp(id, mess, FRIE_HEADER);
+    sendTcp(id, mess);
     free(mess);
 }
 
@@ -217,7 +201,7 @@ void read_mess(char* str){
     system("clear");
     printf("Inserisci il messaggio da inviare: ");
     fgets(str, 500, stdin);
-    if (strchr(str, '\n') == NULL) {
+    if (strchr(str, '\n') == NULL) { //In caso di messaggio > 500
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
     }
@@ -229,7 +213,6 @@ char* build_message_mess(const char* str, int length){
     char* mess=malloc(LENGTH_MESS+length+1);
     char *buf=malloc(100*sizeof(char));
     printf("Inserisci l'ID dell'utente a cui vuoi mandare il messaggio: ");
-    //scanf("%s", buf);
     fgets(buf, 100, stdin);
     buf[strcspn(buf, "\n")] = '\0';
     if (strlen(buf) != LENGTH_ID){
@@ -251,15 +234,13 @@ void mess(client_id* id){
         fprintf(stderr, "Errore! ID inserito troppo corto/lungo");
         return;
     }
-    sendTcp(id, mess, MESS_HEADER);
+    sendTcp(id, mess);
     free(mess);
 }
 
 //Funzione ausiliaria per costruire ,essaggio FLOO?
 char* build_message_floo(const char* str, int length){
     char* mess=malloc(LENGTH_FLOO+length+1);
-    /*sprintf(mess, "%s%s", FLOO_HEADER, str);
-    memcpy(mess+LENGTH_HEADER+length, END_SYMBOL, 3);*/
     sprintf(mess, FORMAT_FLOO, str);
     return mess;
 }
@@ -269,7 +250,7 @@ void floo(client_id* id){
     read_mess(str);
     id->messLength=strlen(str);
     char* mess=build_message_floo(str, id->messLength);
-    sendTcp(id, mess, FLOO_HEADER);
+    sendTcp(id, mess);
     free(mess);
 }
 
@@ -303,7 +284,7 @@ char* build_message_list(){
 
 void list(client_id* id){
     char* mess=build_message_list();
-    sendTcp(id, mess, LIST_HEADER);
+    sendTcp(id, mess);
     free(mess);
 }
 
@@ -328,7 +309,7 @@ void friend_request(int fd){
     printf("[LOG]%s\n", ack);
 }
 
-
+//Funzione ausiliaria per costruire messaggio consu
 char* build_message_consu(){
     char* mess=malloc(LENGTH_CONSU+1);
     strcpy(mess, FORMAT_CONSU);
@@ -337,7 +318,8 @@ char* build_message_consu(){
 
 void consu(client_id* id){
     char* mess=build_message_consu();
-    sendTcp(id, mess, CONSU_HEADER);
+    sendTcp(id, mess);
+    free(mess);
 }
 
 void read_consu(client_id *id){
@@ -357,7 +339,7 @@ void read_consu(client_id *id){
         //TODO flux frie
         char ID[LENGTH_ID+1];
         sscanf(buf, FORMAT_FLUX_FRIE, ID);
-        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta", ID);
+        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
         friend_request(id->fdTCP);
         break;
     }
@@ -393,8 +375,9 @@ void read_consu(client_id *id){
     }
     
     default: 
-        printf("Comportamento indefinito\n");
-        break;
+        printf("Comportamento indefinito\n");        
+        pthread_mutex_unlock(&id->mtx);
+        return;
     }
     //Cancello notifica consultata
     Notifications* aux=id->notifications;
@@ -404,6 +387,7 @@ void read_consu(client_id *id){
     pthread_mutex_unlock(&id->mtx);
 }
 
+//Funzione ausiliaria per costruire messaggio iquit
 char* build_message_iquit(){
     char* mess=malloc(LENGTH_IQUIT+1);
     strcpy(mess, FORMAT_IQUIT);
@@ -412,7 +396,7 @@ char* build_message_iquit(){
 
 void iquit(client_id* id){
     char* mess=build_message_iquit();
-    sendTcp(id, mess, IQUIT_HEADER);
+    sendTcp(id, mess);
 }
 
 //Funzione ausiliaria per inserire la notifica nella struttura dati
@@ -448,6 +432,10 @@ void* udp_listen(void* ptr){
     while(1){
         int rec=recvfrom(id->fdUDP,buf,LENGTH_UDP_NOT,0,(struct sockaddr *)&server,&a);
         buf[rec]='\0';
-        insert_notification(id, buf);
+        char sender_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &server.sin_addr, sender_ip, sizeof(sender_ip));
+        if (strcmp(ip_server, sender_ip) == 0){//Controllo che sia stato il server a inviare
+            insert_notification(id, buf);
+        }
     }
 }

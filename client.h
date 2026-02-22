@@ -23,6 +23,8 @@ typedef struct{
     pthread_mutex_t mtx; //Mutex per le notifiche UDP
 } client_id;
 
+//Indirizzo ip del server
+extern char ip_server[INET_ADDRSTRLEN];
 
 //Controlla se l'utente ha inserito il numero giusto di argomenti
 bool check_args(int, char*[], client_id*);
