@@ -263,6 +263,7 @@ int floo(char* buffer, int index){
     int *visited=calloc(MAX_USERS, sizeof(int)); //Bitmask per vederese un utente ha gia ricevuto il flooding
     visited[index]=1;
     floo_aux(index, visited, users[index].ID, mess);
+    printf("[FLOO] messaggio di flooding inviato\n");
     return 0;
 }
 
@@ -342,6 +343,7 @@ void consu(int sock,int index){
     if (users[index].pendingFluxes==NULL) { //caso vuoto
         pthread_mutex_unlock(&users[index].userMutex);
         sendTCP(FORMAT_NOCON,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
+        printf("[CONSU] non ci sono flussi da consultare\n");
         return;
     }
     FluxNode* flux=users[index].pendingFluxes; //prendo la prima notifica

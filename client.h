@@ -18,7 +18,7 @@ typedef struct{
     int fdTCP; //Socket TCP
     int fdUDP; //Socket TCP
     Notifications* notifications; //Struttura contenente tutte le notifiche
-    int num_notifications; //Numero notifiche udp
+    u_int16_t num_notifications; //Numero notifiche udp
     int messLength; //Lunghezza messaggio da inviare ad un amico/flood
     pthread_mutex_t mtx; //Mutex per le notifiche UDP
 } client_id;

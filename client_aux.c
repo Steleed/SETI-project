@@ -405,7 +405,11 @@ void iquit(client_id* id){
 void insert_notification(client_id* id, char *buf){
     pthread_mutex_lock(&id->mtx);
     int type = buf[0]-'0'; //Tipo notifica udp
-    id->num_notifications++;
+    //id->num_notifications++;
+    unsigned char b1 = (unsigned char) buf[1];
+    unsigned char b2 = (unsigned char) buf[2];
+    u_int16_t n = (b2 << 8) | b1;
+    id->num_notifications = n;
     Notifications* new=malloc(sizeof(Notifications));
     new->udp_notification_type=type;
     new->next=NULL;
