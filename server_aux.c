@@ -147,13 +147,16 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
     }
     else if (strcmp(type, MESS_HEADER) == 0){
         flux->type[0] = '3'; // tipo 3 = messaggio
-        sprintf(flux->content, "SSEM> %-8.8s %s+++", sender, mess);
+        sprintf(flux->content, FORMAT_FLUX_MESS, sender, mess);
+    }
+    else{
+        flux->type[0] = '4'; // tipo 4 = messaggio di flooding
+        sprintf(flux->content, FORMAT_FLUX_FLOO, sender, mess);
     }
     flux->type[1] = "0123456789abcdef"[cnt & 0xF];
     flux->type[2] = "0123456789abcdef"[(cnt >> 4) & 0xF];
     flux->type[3] = '\0';
 
-    //! floo in un'altra funzione
     if (users[userIndex].pendingFluxes == NULL){
         users[userIndex].pendingFluxes=flux;
         printf("[DEBUG] Messaggio aggiunto al flusso = %s\n", users[userIndex].pendingFluxes->content);
@@ -207,15 +210,13 @@ int mess(char* buffer, int index){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
-    char tmp[503];
-    strcpy(tmp, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
-    int l=strlen(tmp);
-    if (l > MAX_MESS+3 || (tmp[l-1] != '+' || tmp[l-2] != '+' || tmp[l-3] != '+')){
+    char mess[503];
+    strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
+    int l=strlen(mess);
+    if (l > MAX_MESS+3 || (mess[l-1] != '+' || mess[l-2] != '+' || mess[l-3] != '+')){
         sendTCP(FORMAT_NOMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
-    char mess[500];
-    strncpy(mess, tmp, l-3);
     mess[l-3] = '\0'; 
     insert_new_flux(friend_index, MESS_HEADER, users[index].ID, mess);
     send_udp_notification(friend_index);
@@ -224,27 +225,37 @@ int mess(char* buffer, int index){
     return 0;
 }
 
-void floo(char* buffer, int index){
-    /*ASSIST PROSLEKSI 25/26
-    PISI 131
-    ZHOU 115
-    CABBOSBUBBATO 90
-    GIANGI 84
-    LAMBERTI 56
-    ONCOLOGIA 43
-    GISI 41
-    MR LEBBRA 30
-    SOLA 32
-    MALESANI 25
-    SGABELLO 18
-    EPAZIZE 16
-    OH 17
-    FASTENO 9
-    MPOSIC 7
-    LABORRA 5
-    MAZONNA 4
-    SORIA 3
-    BISCOTTINO 2*/
+void floo_aux(int index, int* visited, char* mess){
+    pthread_mutex_lock(&users[index].userMutex);
+    Friends* aux=users[index].friends;
+    while (aux != NULL){
+        if (users[aux->friend_index].socketTCP != -1 && visited[aux->friend_index] == 0){
+            insert_new_flux(aux->friend_index, FLOO_HEADER, users[index].ID, mess);
+            send_udp_notification(aux->friend_index);
+            visited[aux->friend_index] = 1;
+            floo_aux(aux->friend_index, visited, mess);
+        }
+        aux=aux->next;
+    }
+    pthread_mutex_unlock(&users[index].userMutex);
+}
+
+int floo(char* buffer, int index){
+    if (index == -1)  return -1;
+    char mess[503];
+    strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
+    int l=strlen(mess);
+    mess[l-3]='\0';
+    if (l > MAX_MESS+3 || (mess[l-1] != '+' || mess[l-2] != '+' || mess[l-3] != '+')){
+        sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+        return -1;
+    }
+    sendTCP(FORMAT_FLOO_ANSWER, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+
+    int *visited=calloc(MAX_USERS, sizeof(int)); //Bitmask per vederese un utente ha gia ricevuto il flooding
+    visited[index]=1;
+    floo_aux(index, visited, mess);
+    return 0;
 }
 
 void list(int index){
@@ -335,7 +346,7 @@ void consu(int sock,int index){
 
     sendTCP(content, strlen(content), sock); //manda la richiesta
 
-     if (strncmp(content, FLUX_FRIE_HEADER, LENGTH_HEADER) == 0) { //caso richiedsta d'amicizia
+    if (strncmp(content, FLUX_FRIE_HEADER, LENGTH_HEADER) == 0) { //caso richiedsta d'amicizia
         char risposta[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
         int r = read(sock, risposta, LENGTH_HEADER+LENGTH_END_SYMBOL);
         risposta[r] = '\0';

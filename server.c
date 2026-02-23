@@ -104,7 +104,11 @@ void* client_handler(void* socket_desc){
             case 5:
             //TODO FLOO
             printf("[PARSER] messaggio FLOO? ricevuto\n");
-            floo(buf,index)
+            if (floo(buf,index) == -1){
+                fprintf(stderr, "[FLOO?] invio messaggio flooding fallito\n");
+                close(*sock);
+                free(sock);
+            }
             break;
 
             case 6:
