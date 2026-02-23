@@ -104,6 +104,7 @@ void* client_handler(void* socket_desc){
             case 5:
             //TODO FLOO
             printf("[PARSER] messaggio FLOO? ricevuto\n");
+            floo(buf,index)
             break;
 
             case 6:

@@ -88,4 +88,7 @@ void add_friend(int, int);
 
 //Funzione notifica richiesta d'amicizia
 void insert_new_flux_frien(int, char*, char);
+
+//Funzione per verificare l'invio di un messaggio di flooding
+int floo(char* buffer, int index);
 #endif

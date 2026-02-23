@@ -224,6 +224,29 @@ int mess(char* buffer, int index){
     return 0;
 }
 
+void floo(char* buffer, int index){
+    /*ASSIST PROSLEKSI 25/26
+    PISI 131
+    ZHOU 115
+    CABBOSBUBBATO 90
+    GIANGI 84
+    LAMBERTI 56
+    ONCOLOGIA 43
+    GISI 41
+    MR LEBBRA 30
+    SOLA 32
+    MALESANI 25
+    SGABELLO 18
+    EPAZIZE 16
+    OH 17
+    FASTENO 9
+    MPOSIC 7
+    LABORRA 5
+    MAZONNA 4
+    SORIA 3
+    BISCOTTINO 2*/
+}
+
 void list(int index){
     if (index==-1)  return;
     char buf[20];
