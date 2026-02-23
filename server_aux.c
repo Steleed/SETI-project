@@ -138,8 +138,8 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
     flux->next=NULL;
     pthread_mutex_lock(&users[userIndex].userMutex);
     users[userIndex].pendingCount++;
-    int cnt = users[userIndex].pendingCount;
-    if (cnt > 255) cnt = 255;
+    //int cnt = users[userIndex].pendingCount;
+    //if (cnt > 255) cnt = 255;
     
     if (strcmp(type, FRIE_HEADER) == 0){
         flux->type[0] = '0'; // tipo 0 = richiesta amicizia
@@ -153,8 +153,11 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
         flux->type[0] = '4'; // tipo 4 = messaggio di flooding
         sprintf(flux->content, FORMAT_FLUX_FLOO, sender, mess);
     }
-    flux->type[1] = "0123456789abcdef"[cnt & 0xF];
+    /*flux->type[1] = "0123456789abcdef"[cnt & 0xF];
     flux->type[2] = "0123456789abcdef"[(cnt >> 4) & 0xF];
+    flux->type[3] = '\0';*/
+    flux->type[1] = users[userIndex].pendingCount & 255;
+    flux->type[2] = (users[userIndex].pendingCount >> 8) & 255;
     flux->type[3] = '\0';
 
     if (users[userIndex].pendingFluxes == NULL){
@@ -168,15 +171,20 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
         aux=aux->next;
     }
     aux->next=flux;
-    printf("[DEBUG] Messaggio aggiunto al flusso = %s", aux->next->content);
+    printf("[DEBUG] Messaggio aggiunto al flusso = %s\n", aux->next->content);
     pthread_mutex_unlock(&users[userIndex].userMutex);
 }
     
 void send_udp_notification(int userIndex){
     pthread_mutex_lock(&users[userIndex].userMutex);
-    sendto(socketUDP, users[userIndex].pendingFluxes->type, LENGTH_UDP_NOT, 
+    FluxNode* aux=users[userIndex].pendingFluxes;
+    while (aux->next != NULL){
+        aux=aux->next;
+    }
+    sendto(socketUDP, aux->type, LENGTH_UDP_NOT, 
         0, (struct sockaddr *)&users[userIndex].clientAddr, (socklen_t)sizeof(struct sockaddr_in));
     pthread_mutex_unlock(&users[userIndex].userMutex);  
+    printf("[DEBUG] tipo notifica = %c\n", aux->type[0]);
 }
 
 
@@ -225,15 +233,15 @@ int mess(char* buffer, int index){
     return 0;
 }
 
-void floo_aux(int index, int* visited, char* mess){
+void floo_aux(int index, int* visited, char* sender, char* mess){
     pthread_mutex_lock(&users[index].userMutex);
     Friends* aux=users[index].friends;
     while (aux != NULL){
         if (users[aux->friend_index].socketTCP != -1 && visited[aux->friend_index] == 0){
-            insert_new_flux(aux->friend_index, FLOO_HEADER, users[index].ID, mess);
+            insert_new_flux(aux->friend_index, FLOO_HEADER, sender, mess);
             send_udp_notification(aux->friend_index);
             visited[aux->friend_index] = 1;
-            floo_aux(aux->friend_index, visited, mess);
+            floo_aux(aux->friend_index, visited, sender, mess);
         }
         aux=aux->next;
     }
@@ -243,18 +251,18 @@ void floo_aux(int index, int* visited, char* mess){
 int floo(char* buffer, int index){
     if (index == -1)  return -1;
     char mess[503];
-    strcpy(mess, buffer+LENGTH_HEADER+1+LENGTH_ID+1);
+    strcpy(mess, buffer+LENGTH_HEADER+1);
     int l=strlen(mess);
-    mess[l-3]='\0';
     if (l > MAX_MESS+3 || (mess[l-1] != '+' || mess[l-2] != '+' || mess[l-3] != '+')){
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
     sendTCP(FORMAT_FLOO_ANSWER, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
+    mess[l-3]='\0';
 
     int *visited=calloc(MAX_USERS, sizeof(int)); //Bitmask per vederese un utente ha gia ricevuto il flooding
     visited[index]=1;
-    floo_aux(index, visited, mess);
+    floo_aux(index, visited, users[index].ID, mess);
     return 0;
 }
 
@@ -303,11 +311,15 @@ void insert_new_flux_frien(int userIndex, char* content, char tipo_udp){
 
     pthread_mutex_lock(&users[userIndex].userMutex); 
     users[userIndex].pendingCount++;
-    int cnt = users[userIndex].pendingCount;
+    //int cnt = users[userIndex].pendingCount;
     flux->type[0] = tipo_udp;
-    flux->type[1] = "0123456789abcdef"[cnt & 0xF];    
+    /*flux->type[1] = "0123456789abcdef"[cnt & 0xF];    
     flux->type[2] = "0123456789abcdef"[(cnt>>4) & 0xF]; 
+    flux->type[3] = '\0';*/
+    flux->type[1] = users[userIndex].pendingCount & 255;
+    flux->type[2] = (users[userIndex].pendingCount >> 8) & 255;
     flux->type[3] = '\0';
+
     if (users[userIndex].pendingFluxes == NULL){ //inserisce il flusso nella lista
         users[userIndex].pendingFluxes = flux;
     } else {

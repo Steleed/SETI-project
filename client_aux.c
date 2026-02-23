@@ -359,9 +359,9 @@ void read_consu(client_id *id){
     }
     
     case 3: {
-        char mess[MAX_MESS+1];
+        char mess[MAX_MESS+LENGTH_END_SYMBOL+1];
         char id[LENGTH_ID+1];
-        sscanf(buf, FORMAT_FLUX_MESS, id, mess);
+        sscanf(buf, "SSEM> %8s %[^+]200[^+]+++", id, mess);
         printf("Messaggio da parte di %s:\n%s", id, mess);
         break;
     }
@@ -369,7 +369,7 @@ void read_consu(client_id *id){
     case 4: {
         char floo[MAX_MESS+1];
         char id[LENGTH_ID+1];
-        sscanf(buf, FORMAT_FLUX_FLOO, id, floo);
+        sscanf(buf, "OOLF> %8s %200[^+]+++", id, floo);
         printf("Messaggio di flooding da parte di %s:\n%s", id, floo);
         break;
     }
@@ -381,7 +381,7 @@ void read_consu(client_id *id){
     }
     //Cancello notifica consultata
     Notifications* aux=id->notifications;
-    id->notifications=id->notifications->next;
+    id->notifications=aux->next;
     id->num_notifications--;
     free(aux);
     pthread_mutex_unlock(&id->mtx);
@@ -405,12 +405,7 @@ void iquit(client_id* id){
 void insert_notification(client_id* id, char *buf){
     pthread_mutex_lock(&id->mtx);
     int type = buf[0]-'0'; //Tipo notifica udp
-    char c1 = buf[1]; // nibble basso
-    char c2 = buf[2]; // nibble alto
-    int v1 = (c1 >= 'a') ? c1-'a'+10 : c1-'0';
-    int v2 = (c2 >= 'a') ? c2-'a'+10 : c2-'0';
-    int n = (v2 << 4) | v1;
-    id->num_notifications = n;
+    id->num_notifications++;
     Notifications* new=malloc(sizeof(Notifications));
     new->udp_notification_type=type;
     new->next=NULL;
