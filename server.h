@@ -83,4 +83,9 @@ void iquit(int, int);
 //Funzione per consultazione notifiche
 void consu(int, int);
 
+//Funzione per registrare le amicizie
+void add_friend(int, int);
+
+//Funzione notifica richiesta d'amicizia
+void insert_new_flux_frien(int, char*, char);
 #endif

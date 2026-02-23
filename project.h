@@ -63,13 +63,13 @@
 #define FORMAT_OKMESS "MESS>+++" //Formato conferma invio messaggio
 #define FORMAT_NOMESS "MESS<+++" //Formato errore invio messaggio
 #define FLUX_MESS_HEADER "SSEM>" //Intestazione flusso invio messaggio
-#define FORMAT_FLUX_MESS "SSEM> %8s %200s+++" //Formato flusso invio messaggio
+#define FORMAT_FLUX_MESS "SSEM> %8s %200[^+]+++" //Formato flusso invio messaggio
 
 #define FLOO_HEADER "FLOO?" //Intestazione per flooding
 #define LENGTH_FLOO 9 //Lunghezza messaggio flooading senza contare la lunghezza del messaggio interno
 #define FORMAT_FLOO "FLOO? %s+++" //Formato messaggio flooding
 #define FLUX_FLOO_HEADER "OOLF>" //Intestazione flusso flooding
-#define FORMAT_FLUX_FLOO "OOLF> %8s %200s+++" //Formato flusso flooding
+#define FORMAT_FLUX_FLOO "OOLF> %8s %200[^+]+++" //Formato flusso flooding
 
 #define LIST_HEADER "LIST?" //Intestazione per lista utenti
 #define LENGTH_LIST 8 //Lunghezza messaggio per richiesta lista utenti
@@ -84,6 +84,8 @@
 #define LENGTH_CONSU 8 //Lunghezza messaggio CONSU
 #define FORMAT_CONSU "CONSU+++" //Formato messaggio consultazione
 #define FORMAT_NOCON "NOCON+++" //Formato per segnalare che non ci sono flussi
+#define ACKRF_HEADER "ACKRF"
+#define FORMAT_ACKRF "ACKRF+++"
 
 #define IQUIT_HEADER "IQUIT"  //Intestazione messaggio di disconnessione
 #define LENGTH_IQUIT 8 //Lunghezza messaggio disconnessione

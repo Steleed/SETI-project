@@ -138,16 +138,20 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
     flux->next=NULL;
     pthread_mutex_lock(&users[userIndex].userMutex);
     users[userIndex].pendingCount++;
-    char b2=(users[userIndex].pendingCount >> 8) & 255;
-    char b1=users[userIndex].pendingCount & 255;
+    int cnt = users[userIndex].pendingCount;
+    if (cnt > 255) cnt = 255;
+    
     if (strcmp(type, FRIE_HEADER) == 0){
-        sprintf(flux->type, FORMAT_UDP_NOT, FRIE_NOT_UDP, b1, b2);
+        flux->type[0] = '0'; // tipo 0 = richiesta amicizia
         sprintf(flux->content, FORMAT_FLUX_FRIE, sender);
     }
     else if (strcmp(type, MESS_HEADER) == 0){
-        sprintf(flux->type, FORMAT_UDP_NOT, FRIE_NOT_UDP, b1, b2);
-        sprintf(flux->content, FORMAT_FLUX_MESS, sender, mess);
+        flux->type[0] = '3'; // tipo 3 = messaggio
+        sprintf(flux->content, "SSEM> %-8.8s %s+++", sender, mess);
     }
+    flux->type[1] = "0123456789abcdef"[cnt & 0xF];
+    flux->type[2] = "0123456789abcdef"[(cnt >> 4) & 0xF];
+    flux->type[3] = '\0';
 
     //! floo in un'altra funzione
     if (users[userIndex].pendingFluxes == NULL){
@@ -182,7 +186,7 @@ int frie(char* buffer, int index){
     strncpy(friend_id, buffer+LENGTH_HEADER+1, LENGTH_ID);
     friend_id[LENGTH_ID] = '\0';
     int friend_index=find_user_index(friend_id);
-    if (friend_index==-1 || friend_index == index || users[friend_index].socketTCP == -1 || is_friend(index, friend_id) == 0){ //Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
+    if (friend_index==-1 || friend_index == index || is_friend(index, friend_id) == 0){//Controllo se: friend_index esiste || non stia cercando di richiedere amicizia a se stesso || a un utente già amico
         sendTCP(FORMAT_NOFRIE, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
         return -1;
     }
@@ -212,6 +216,7 @@ int mess(char* buffer, int index){
     }
     char mess[500];
     strncpy(mess, tmp, l-3);
+    mess[l-3] = '\0'; 
     insert_new_flux(friend_index, MESS_HEADER, users[index].ID, mess);
     send_udp_notification(friend_index);
     sendTCP(FORMAT_OKMESS, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
@@ -232,6 +237,57 @@ void list(int index){
     pthread_mutex_unlock(&usersListMutex);
     printf("[LIST] Inviata lista di %d utenti\n", registeredUsers);
 }
+void add_friend(int indexA, int indexB){
+    Friends* nuovoA = malloc(sizeof(Friends)); //aggiunge B alla lista amici di A
+    strcpy(nuovoA->friendID, users[indexB].ID);
+    nuovoA->friend_index = indexB;
+    nuovoA->next = NULL;
+    pthread_mutex_lock(&users[indexA].userMutex);
+    nuovoA->next = users[indexA].friends;
+    users[indexA].friends = nuovoA;
+    users[indexA].friendsCount++;
+    pthread_mutex_unlock(&users[indexA].userMutex);
+
+    Friends* nuovoB = malloc(sizeof(Friends)); //aggiunge A alla lista amici di B
+    strcpy(nuovoB->friendID, users[indexA].ID);
+    nuovoB->friend_index = indexA;
+    nuovoB->next = NULL;
+    pthread_mutex_lock(&users[indexB].userMutex);
+    nuovoB->next = users[indexB].friends;
+    users[indexB].friends = nuovoB;
+    users[indexB].friendsCount++;
+    pthread_mutex_unlock(&users[indexB].userMutex);
+
+    printf("[FRIEND] %s e %s ora sono amici\n", users[indexA].ID, users[indexB].ID);
+}
+
+void insert_new_flux_frien(int userIndex, char* content, char tipo_udp){
+    FluxNode* flux = malloc(sizeof(FluxNode)); //inzializza
+    strcpy(flux->content, content);
+    flux->senderID[0] = '\0';
+    flux->next = NULL;
+
+    pthread_mutex_lock(&users[userIndex].userMutex); 
+    users[userIndex].pendingCount++;
+    int cnt = users[userIndex].pendingCount;
+    flux->type[0] = tipo_udp;
+    flux->type[1] = "0123456789abcdef"[cnt & 0xF];    
+    flux->type[2] = "0123456789abcdef"[(cnt>>4) & 0xF]; 
+    flux->type[3] = '\0';
+    if (users[userIndex].pendingFluxes == NULL){ //inserisce il flusso nella lista
+        users[userIndex].pendingFluxes = flux;
+    } else {
+        FluxNode* aux = users[userIndex].pendingFluxes;
+        while (aux->next != NULL){
+            aux = aux->next;
+        }
+        aux->next = flux;
+    }
+    pthread_mutex_unlock(&users[userIndex].userMutex);
+
+    send_udp_notification(userIndex); //invia la notifica
+    printf("[FLUX] Flusso aggiunto per %s: %s\n", users[userIndex].ID, content);
+}
 
 void consu(int sock,int index){ 
     if(index==-1) 
@@ -242,7 +298,7 @@ void consu(int sock,int index){
         sendTCP(FORMAT_NOCON,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
         return;
     }
-    FluxNode* flux=users[index].pendingFluxes; //prendo
+    FluxNode* flux=users[index].pendingFluxes; //prendo la prima notifica
     char content[500];
     strcpy(content,flux->content);
     char senderID[LENGTH_ID+1];
@@ -253,8 +309,29 @@ void consu(int sock,int index){
         users[index].pendingCount--;
     free(flux);
     pthread_mutex_unlock(&users[index].userMutex);
-    sendTCP(content, strlen(content), sock);
+
+    sendTCP(content, strlen(content), sock); //manda la richiesta
+
+     if (strncmp(content, FLUX_FRIE_HEADER, LENGTH_HEADER) == 0) { //caso richiedsta d'amicizia
+        char risposta[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
+        int r = read(sock, risposta, LENGTH_HEADER+LENGTH_END_SYMBOL);
+        risposta[r] = '\0';
+        printf("[CONSU] Risposta richiesta amicizia: %s\n", risposta);
+        int sender_index = find_user_index(senderID);
+        if (strncmp(risposta, OKIRF_HEADER, LENGTH_HEADER)==0) { //caso accetta
+            add_friend(index, sender_index);
+            char frien_msg[20];
+            sprintf(frien_msg, FORMAT_FRIEN, users[index].ID);
+            insert_new_flux_frien(sender_index, frien_msg, '1');
+        } else { //caso rifiuto
+            char nofri_msg[20];
+            sprintf(nofri_msg, FORMAT_NOFRI, users[index].ID);
+            insert_new_flux_frien(sender_index, nofri_msg, '2'); 
+        }
+        sendTCP(FORMAT_ACKRF, LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
+    }
 }
+
 
 void iquit(int sock,int index){
     sendTCP(FORMAT_GOBYE,LENGTH_HEADER+LENGTH_END_SYMBOL,sock);
