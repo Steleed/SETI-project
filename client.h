@@ -16,7 +16,7 @@ typedef struct{
     char PORT[LENGTH_UDP_PORT+1];  //Porta UDP
     uint16_t MDP; //Password in little-endian
     int fdTCP; //Socket TCP
-    int fdUDP; //Socket TCP
+    int fdUDP; //Socket UCP
     Notifications* notifications; //Struttura contenente tutte le notifiche
     u_int16_t num_notifications; //Numero notifiche udp
     int messLength; //Lunghezza messaggio da inviare ad un amico/flood

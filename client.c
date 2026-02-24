@@ -14,15 +14,14 @@ int main(int argc, char* argv[]){
     char *tmp=malloc(100*sizeof(char));
     do {
         printf("Inserisci la password ((un numero compreso tra 0 e 65535): ");
-        //scanf("%d", &p);
         fgets(tmp, 100, stdin);
         p=atoi(tmp);
     }
     while (!check_MPD(&p));
     free(tmp);
     id->MDP=htole16(p); //Password client
-    id->num_notifications=0;
-    //?id->notifications=NULL;
+    id->num_notifications=0; //Numero di notifiche ricevute
+    id->notifications=NULL; //Lista notifiche ricevute
     system("clear");
     
 
@@ -32,7 +31,6 @@ int main(int argc, char* argv[]){
     if (udpSock(id) == -1)  return EXIT_FAILURE;
     
     pthread_mutex_init(&id->mtx, NULL); //Inizializzazione mutex
-    
     
     int start=print_intro();
     switch (start)
@@ -54,12 +52,12 @@ int main(int argc, char* argv[]){
 
     pthread_t th1;
     pthread_create(&th1,NULL,udp_listen,id);
+    pthread_detach(th1);
  
     int choice;
     while (1){    
         sleep(1);
         system("clear");        
-        //!Mutex?
         //Controllo notifiche udp
         pthread_mutex_lock(&id->mtx);
         if (id->num_notifications>0){
@@ -73,22 +71,18 @@ int main(int argc, char* argv[]){
         switch (choice)
         {
         case 1: 
-            //TODO amicizia
             friend(id);
             break;
         case 2:
-            //TODO messaggio
             mess(id);
             break;
         case 3:
-            //TODO flood
             floo(id);
             break;
         case 4:
             list(id);
             break;
         case 5:
-            //TODO consultazione
             consu(id);
             break;
         case 6:

@@ -32,8 +32,15 @@ int tcpSock(client_id* id){
     struct sockaddr_in address_sock_tcp;
     address_sock_tcp.sin_family=AF_INET;
     address_sock_tcp.sin_port=htons(6769);
-    //TODO getaddrinfo
-    inet_aton("127.0.0.1", &address_sock_tcp.sin_addr);
+    FILE *ip=fopen("ip.txt", "r");
+    if (ip == NULL){
+        fprintf(stderr, "IP server non valido\n");
+        free(id);
+        return -1;
+    }
+    fgets(ip_server, INET_ADDRSTRLEN, ip);
+    fclose(ip);
+    inet_aton(ip_server, &address_sock_tcp.sin_addr);
     id->fdTCP=socket(PF_INET, SOCK_STREAM, 0);
     if (id->fdTCP == EOF){
         perror("Errore socket");
@@ -77,7 +84,6 @@ int print_intro(){
     puts("Benvenuto su IPortbook!\nSe è la tua prima volta, premi 1 e registrati, altrimenti digita 2 per conneterti o 3 per uscire\n");
     int n;
     char* tmp=malloc(100*sizeof(char));
-    //scanf("%d", &n);
     fgets(tmp, 100, stdin);
     n=atoi(tmp);
     free(tmp);
@@ -87,7 +93,6 @@ int print_intro(){
 int print_menu(){
     puts("Scegli una tra le seguenti opzioni e digita il numero a essa associato\n1. Richiedi amicizia\n2. Manda messaggio\n3. Manda flood\n4. Visualizza elenco utenti\n5. Consulta le notifiche\n6. Disconnettiti\n");
     int n;
-    //scanf("%d", &n);
     char* tmp=malloc(100*sizeof(char));
     fgets(tmp, 100, stdin);
     n=atoi(tmp);
@@ -132,6 +137,15 @@ void sendTcp(client_id* id, char* mess){
     printf("[LOG]%s\n", buf);
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
+        if (id->num_notifications != 0){
+            Notifications* aux=id->notifications;
+            Notifications* del=NULL;
+            while (aux != NULL){
+                del=aux;
+                aux=aux->next;
+                free(del);
+            }
+        }
         free(id);
         free(mess);
         exit(EXIT_SUCCESS);
@@ -194,6 +208,7 @@ void friend(client_id* id){
     }
     sendTcp(id, mess);
     free(mess);
+    printf("Richiesta d'amiciza inviata con successo\n");
 }
 
 //Funzione ausiliaria per leggere il messaggio scritto in input
@@ -236,6 +251,7 @@ void mess(client_id* id){
     }
     sendTcp(id, mess);
     free(mess);
+    printf("Messaggio inviato");
 }
 
 //Funzione ausiliaria per costruire ,essaggio FLOO?
@@ -252,6 +268,7 @@ void floo(client_id* id){
     char* mess=build_message_floo(str, id->messLength);
     sendTcp(id, mess);
     free(mess);
+    printf("Messaggio di flooding inviato\n");
 }
 
 void read_list(int fd){
@@ -261,7 +278,6 @@ void read_list(int fd){
     int num_users;
     printf("[LOG}%s\n", buf);
     sscanf(buf, FORMAT_RLIST, &num_users);
-    printf("DEBUG: numero utenti = %d\n", num_users);
     printf("Lettura lista di %d utenti:\n", num_users);
     char usr[LENGTH_LINUM+1];
     char id[LENGTH_ID+1];
@@ -271,8 +287,10 @@ void read_list(int fd){
         printf("[LOG]%s\n", usr);
         sscanf(usr, FORMAT_LINUM, id);
         printf("%s\n", id);
-        sleep(1);
+        
     }
+    printf("\nPremi INVIO per continuare...");
+    getchar();
 }
 
 //Funzione ausiliaria per costruire messaggio LIST?
@@ -288,6 +306,7 @@ void list(client_id* id){
     free(mess);
 }
 
+//Funzione ausiliaria per accettare/rifiutare la richiesta d'amicizia
 void friend_request(int fd){
     char* tmp=malloc(100*sizeof(char));
     int p;
@@ -333,46 +352,44 @@ void read_consu(client_id *id){
         pthread_mutex_unlock(&id->mtx);
         return;
     }
+    char ID[LENGTH_ID+1];
     switch (id->notifications->udp_notification_type)
     {
-    case 0: {
+    case 0: 
         //TODO flux frie
-        char ID[LENGTH_ID+1];
         sscanf(buf, FORMAT_FLUX_FRIE, ID);
         printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
         friend_request(id->fdTCP);
         break;
-    }
-
-    case 1: {
-        char id[LENGTH_ID+1];
-        sscanf(buf, FORMAT_FRIEN, id);
-        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", id);
-        break;
-    }
-
-    case 2: {
-        char id[LENGTH_ID+1];
-        sscanf(buf, FORMAT_NOFRI, id);
-        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", id);        
-        break;
-    }
     
-    case 3: {
+
+    case 1: 
+        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
+        ID[LENGTH_ID+1]='\0';
+        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", ID);
+        break;
+    
+
+    case 2: 
+        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
+        ID[LENGTH_ID+1]='\0';
+        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", ID);        
+        break;
+    
+    
+    case 3: 
         char mess[MAX_MESS+LENGTH_END_SYMBOL+1];
-        char id[LENGTH_ID+1];
-        sscanf(buf, "SSEM> %8s %[^+]200[^+]+++", id, mess);
-        printf("Messaggio da parte di %s:\n%s", id, mess);
+        sscanf(buf, "SSEM> %8s %[^+]200[^+]+++", ID, mess);
+        printf("Messaggio da parte di %s:\n%s", ID, mess);
         break;
-    }
     
-    case 4: {
+    
+    case 4: 
         char floo[MAX_MESS+1];
-        char id[LENGTH_ID+1];
-        sscanf(buf, "OOLF> %8s %200[^+]+++", id, floo);
-        printf("Messaggio di flooding da parte di %s:\n%s", id, floo);
+        sscanf(buf, "OOLF> %8s %200[^+]+++", ID, floo);
+        printf("Messaggio di flooding da parte di %s:\n%s", ID, floo);
         break;
-    }
+    
     
     default: 
         printf("Comportamento indefinito\n");        
@@ -405,7 +422,6 @@ void iquit(client_id* id){
 void insert_notification(client_id* id, char *buf){
     pthread_mutex_lock(&id->mtx);
     int type = buf[0]-'0'; //Tipo notifica udp
-    //id->num_notifications++;
     unsigned char b1 = (unsigned char) buf[1];
     unsigned char b2 = (unsigned char) buf[2];
     u_int16_t n = (b2 << 8) | b1;
@@ -433,6 +449,9 @@ void* udp_listen(void* ptr){
     socklen_t a=sizeof(server);
     while(1){
         int rec=recvfrom(id->fdUDP,buf,LENGTH_UDP_NOT,0,(struct sockaddr *)&server,&a);
+        if (rec == -1){
+            return NULL;
+        }
         buf[rec]='\0';
         char sender_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &server.sin_addr, sender_ip, sizeof(sender_ip));
