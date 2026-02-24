@@ -208,7 +208,6 @@ void friend(client_id* id){
     }
     sendTcp(id, mess);
     free(mess);
-    printf("Richiesta d'amiciza inviata con successo\n");
 }
 
 //Funzione ausiliaria per leggere il messaggio scritto in input

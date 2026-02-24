@@ -27,7 +27,6 @@ typedef struct {
     char udpPort[LENGTH_UDP_PORT+1]; 
     struct sockaddr_in clientAddr; //IP utente
     int socketTCP;                 //> 0 se connesso, -1 se offline               
-    //char friends[MAX_USERS][LENGTH_ID + 1]; //Lista degli ID degli amici
     Friends* friends;              //Testa della lista degli amici
     int friendsCount;              //Numero amici
     //Gestione Messaggi 
@@ -43,9 +42,6 @@ extern int socketUDP;                  //Socket UDP per mandare notifiche agli u
 extern pthread_mutex_t usersListMutex; //Protegge l'aggiunta di nuovi utenti 
 
 //FUNZIONI
-
-//Inizializza tutte le strutture dati all'avvio del server
-void init_server_structures();
 
 //Funzione principale eseguita dal Thread per ogni client
 void* client_handler(void* socket_desc);

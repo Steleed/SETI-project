@@ -13,7 +13,7 @@ int main(int argc, char* argv[]){
     int p;
     char *tmp=malloc(100*sizeof(char));
     do {
-        printf("Inserisci la password ((un numero compreso tra 0 e 65535): ");
+        printf("Inserisci la password (un numero compreso tra 0 e 65535): ");
         fgets(tmp, 100, stdin);
         p=atoi(tmp);
     }

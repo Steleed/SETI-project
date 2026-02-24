@@ -119,6 +119,8 @@ int conne(int sock, char* buffer){
     }
     pthread_mutex_lock(&users[found].userMutex);
     users[found].socketTCP = sock;
+    users[found].pendingFluxes=NULL;
+    users[found].pendingCount=0;
     struct sockaddr_in tmp_addr;
     socklen_t l = sizeof(tmp_addr);
     if (getpeername(sock, (struct sockaddr*)&tmp_addr, &l) == 0) {
@@ -138,8 +140,6 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
     flux->next=NULL;
     pthread_mutex_lock(&users[userIndex].userMutex);
     users[userIndex].pendingCount++;
-    //int cnt = users[userIndex].pendingCount;
-    //if (cnt > 255) cnt = 255;
     
     if (strcmp(type, FRIE_HEADER) == 0){
         flux->type[0] = '0'; // tipo 0 = richiesta amicizia
@@ -153,16 +153,14 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
         flux->type[0] = '4'; // tipo 4 = messaggio di flooding
         sprintf(flux->content, FORMAT_FLUX_FLOO, sender, mess);
     }
-    /*flux->type[1] = "0123456789abcdef"[cnt & 0xF];
-    flux->type[2] = "0123456789abcdef"[(cnt >> 4) & 0xF];
-    flux->type[3] = '\0';*/
+
     flux->type[1] = users[userIndex].pendingCount & 255;
     flux->type[2] = (users[userIndex].pendingCount >> 8) & 255;
     flux->type[3] = '\0';
 
     if (users[userIndex].pendingFluxes == NULL){
         users[userIndex].pendingFluxes=flux;
-        printf("[DEBUG] Messaggio aggiunto al flusso = %s\n", users[userIndex].pendingFluxes->content);
+        printf("[FLUX] Messaggio aggiunto al flusso = %s\n", users[userIndex].pendingFluxes->content);
         pthread_mutex_unlock(&users[userIndex].userMutex);
         return;
     }
@@ -171,7 +169,7 @@ void insert_new_flux(int userIndex, char* type, char* sender, char* mess){
         aux=aux->next;
     }
     aux->next=flux;
-    printf("[DEBUG] Messaggio aggiunto al flusso = %s\n", aux->next->content);
+    printf("[FLUX] Messaggio aggiunto al flusso = %s\n", aux->next->content);
     pthread_mutex_unlock(&users[userIndex].userMutex);
 }
     
@@ -184,7 +182,6 @@ void send_udp_notification(int userIndex){
     sendto(socketUDP, aux->type, LENGTH_UDP_NOT, 
         0, (struct sockaddr *)&users[userIndex].clientAddr, (socklen_t)sizeof(struct sockaddr_in));
     pthread_mutex_unlock(&users[userIndex].userMutex);  
-    printf("[DEBUG] tipo notifica = %c\n", aux->type[0]);
 }
 
 
@@ -312,11 +309,7 @@ void insert_new_flux_frien(int userIndex, char* content, char tipo_udp){
 
     pthread_mutex_lock(&users[userIndex].userMutex); 
     users[userIndex].pendingCount++;
-    //int cnt = users[userIndex].pendingCount;
     flux->type[0] = tipo_udp;
-    /*flux->type[1] = "0123456789abcdef"[cnt & 0xF];    
-    flux->type[2] = "0123456789abcdef"[(cnt>>4) & 0xF]; 
-    flux->type[3] = '\0';*/
     flux->type[1] = users[userIndex].pendingCount & 255;
     flux->type[2] = (users[userIndex].pendingCount >> 8) & 255;
     flux->type[3] = '\0';
@@ -386,6 +379,13 @@ void iquit(int sock,int index){
     if(index!=-1)
     {
         pthread_mutex_lock(&users[index].userMutex);
+        FluxNode* aux=users[index].pendingFluxes;
+            FluxNode* del=NULL;
+            while (aux != NULL){
+                del=aux;
+                aux=aux->next;
+                free(del);
+            }
         users[index].socketTCP = -1;
         pthread_mutex_unlock(&users[index].userMutex);
         printf("[IQUIT] Utente %s disconnesso correttamente.\n", users[index].ID);
