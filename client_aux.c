@@ -158,6 +158,14 @@ void sendTcp(client_id* id, char* mess){
         fprintf(stderr, "Richiesta d'amicizia non inviata, l'utente potrebbe non esistere o essere gia tuo amico\n");
         return;
     }
+    if (strcmp(buf, FORMAT_OKMESS) == 0){
+        printf("Messaggio inviato con successo\n");
+        return;
+    }
+    if (strcmp(buf, FORMAT_NOMESS) == 0){
+        fprintf(stderr, "Messaggio non inviato, messaggio troppo lungo oppure il destinatario potrebbe non esistere o non essere tuo amico\n");
+        return;
+    }
 }
 
 //Funzione ausiliaria per costurire messaggio REGIS
@@ -260,7 +268,8 @@ void mess(client_id* id){
     }
     sendTcp(id, mess);
     free(mess);
-    printf("Messaggio inviato");
+    printf("Premi INVIO per continuare...");
+    getchar();
 }
 
 //Funzione ausiliaria per costruire ,essaggio FLOO?
@@ -278,6 +287,8 @@ void floo(client_id* id){
     sendTcp(id, mess);
     free(mess);
     printf("Messaggio di flooding inviato\n");
+    printf("Premi INVIO per continuare...");
+    getchar();
 }
 
 void read_list(int fd){
@@ -365,7 +376,6 @@ void read_consu(client_id *id){
     switch (id->notifications->udp_notification_type)
     {
     case 0: 
-        //TODO flux frie
         sscanf(buf, FORMAT_FLUX_FRIE, ID);
         printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
         friend_request(id->fdTCP);
