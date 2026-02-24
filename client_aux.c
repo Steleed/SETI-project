@@ -150,6 +150,14 @@ void sendTcp(client_id* id, char* mess){
         free(mess);
         exit(EXIT_SUCCESS);
     }
+    if (strcmp(buf, FORMAT_OKFRIE) == 0){
+        printf("Richiesta d'amicizia inviata con successo\n");
+        return;
+    }
+    if (strcmp(buf, FORMAT_NOFRIE) == 0){
+        fprintf(stderr, "Richiesta d'amicizia non inviata, l'utente potrebbe non esistere o essere gia tuo amico\n");
+        return;
+    }
 }
 
 //Funzione ausiliaria per costurire messaggio REGIS
@@ -208,6 +216,8 @@ void friend(client_id* id){
     }
     sendTcp(id, mess);
     free(mess);
+    printf("Premi INVIO per continuare...");
+    getchar();
 }
 
 //Funzione ausiliaria per leggere il messaggio scritto in input
@@ -275,7 +285,7 @@ void read_list(int fd){
     int r=read(fd, buf, LENGTH_RLIST);
     buf[r]='\0';
     int num_users;
-    printf("[LOG}%s\n", buf);
+    printf("[LOG]%s\n", buf);
     sscanf(buf, FORMAT_RLIST, &num_users);
     printf("Lettura lista di %d utenti:\n", num_users);
     char usr[LENGTH_LINUM+1];
@@ -364,14 +374,14 @@ void read_consu(client_id *id){
 
     case 1: 
         strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
-        ID[LENGTH_ID+1]='\0';
+        ID[LENGTH_ID]='\0';
         printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", ID);
         break;
     
 
     case 2: 
         strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
-        ID[LENGTH_ID+1]='\0';
+        ID[LENGTH_ID]='\0';
         printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", ID);        
         break;
     
