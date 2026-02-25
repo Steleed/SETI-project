@@ -1,6 +1,6 @@
 #include "client.h"
 
-bool check_args(int argc, char* argv[], client_id* id){
+bool check_args(int argc, char* argv[], client_id* id){ //verifica degli argomenti
     if (argc != 5)  return false;
     if (strcmp(argv[1],"-i") == 0){
         if (strlen(argv[2]) != LENGTH_ID)
@@ -25,14 +25,15 @@ bool check_args(int argc, char* argv[], client_id* id){
 }
 
 bool check_MPD(const int *p){
-    return (*p>=0 && *p<=65535);
+    return (*p>=0 && *p<=65535); //controllo range password
 }
 
-int tcpSock(client_id* id){
+int tcpSock(client_id* id){ //inizializzazione socket tcp e connessione al server
     struct sockaddr_in address_sock_tcp;
     address_sock_tcp.sin_family=AF_INET;
     address_sock_tcp.sin_port=htons(6769);
-    FILE *ip=fopen("ip.txt", "r");
+
+    FILE *ip=fopen("ip.txt", "r"); //lettura ip dal file per flessibilità
     if (ip == NULL){
         fprintf(stderr, "IP server non valido\n");
         free(id);
@@ -40,6 +41,7 @@ int tcpSock(client_id* id){
     }
     fgets(ip_server, INET_ADDRSTRLEN, ip);
     fclose(ip);
+
     inet_aton(ip_server, &address_sock_tcp.sin_addr);
     id->fdTCP=socket(PF_INET, SOCK_STREAM, 0);
     if (id->fdTCP == EOF){
@@ -60,16 +62,17 @@ int tcpSock(client_id* id){
         sleep(1);
         system("clear");
     }
-    inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server));
+    inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server)); //salva l'ip del server
     return 0;
 }
 
-int udpSock(client_id* id){
+int udpSock(client_id* id){ //inizializzazione socket udp per notifiche
     id->fdUDP=socket(PF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in address_sock_udp;
     address_sock_udp.sin_family=AF_INET;
     address_sock_udp.sin_port=htons(atoi(id->PORT));
     address_sock_udp.sin_addr.s_addr=htonl(INADDR_ANY);
+
     if(bind(id->fdUDP,(struct sockaddr *)&address_sock_udp,sizeof(struct sockaddr_in)) == EOF){
         perror("Errore binding udp");
         close(id->fdTCP);
@@ -131,10 +134,12 @@ void sendTcp(client_id* id, char* mess){
         read_consu(id);
         return;
     }
+
     char buf[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
-    int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL);
+    int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL); //lettura risposta server
     buf[r]='\0';
     printf("[LOG]%s\n", buf);
+
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
         if (id->num_notifications != 0){
@@ -149,7 +154,7 @@ void sendTcp(client_id* id, char* mess){
         free(id);
         free(mess);
         exit(EXIT_SUCCESS);
-    }
+    }//feedback
     if (strcmp(buf, FORMAT_OKFRIE) == 0){
         printf("Richiesta d'amicizia inviata con successo\n");
         return;
@@ -172,7 +177,7 @@ void sendTcp(client_id* id, char* mess){
 char* build_message_reg(client_id *id){
     char *mess=malloc(LENGTH_REGIS+1);
     sprintf(mess, FORMAT_REGIS, id->ID, id->PORT, id->MDP & 255, (id->MDP >> 8) & 255);
-
+    //i 2 byte della password inviati separatamente
     return mess;
 }
 
@@ -297,12 +302,12 @@ void read_list(int fd){
     buf[r]='\0';
     int num_users;
     printf("[LOG]%s\n", buf);
-    sscanf(buf, FORMAT_RLIST, &num_users);
+    sscanf(buf, FORMAT_RLIST, &num_users); //lettura numero utenti
     printf("Lettura lista di %d utenti:\n", num_users);
     char usr[LENGTH_LINUM+1];
     char id[LENGTH_ID+1];
     for (int i=0;i<num_users;i++){
-        r=read(fd, usr, LENGTH_LINUM);
+        r=read(fd, usr, LENGTH_LINUM); //lettura utenti
         usr[r]='\0';
         printf("[LOG]%s\n", usr);
         sscanf(usr, FORMAT_LINUM, id);
@@ -467,7 +472,7 @@ void* udp_listen(void* ptr){
     struct sockaddr_in server;
     socklen_t a=sizeof(server);
     while(1){
-        int rec=recvfrom(id->fdUDP,buf,LENGTH_UDP_NOT,0,(struct sockaddr *)&server,&a);
+        int rec=recvfrom(id->fdUDP,buf,LENGTH_UDP_NOT,0,(struct sockaddr *)&server,&a); //aspetta un pacchetto udp
         if (rec == -1){
             return NULL;
         }

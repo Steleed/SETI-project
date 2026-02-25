@@ -11,12 +11,12 @@ int main(){
     address_sock.sin_family=AF_INET;
     address_sock.sin_port=htons(6769);
     address_sock.sin_addr.s_addr=htonl(INADDR_ANY);
-    int sock=socket(PF_INET, SOCK_STREAM, 0);
+    int sock=socket(PF_INET, SOCK_STREAM, 0); //creazione socket tcp
     if (bind(sock, (struct sockaddr *)&address_sock, sizeof(struct sockaddr_in))==EOF){
         perror("errore bind");
         return EXIT_FAILURE;
     }
-    if (listen(sock, 0)==EOF){
+    if (listen(sock, 0)==EOF){ //ascolto del client 
         perror("errore server");
         return EXIT_FAILURE;
     }  
@@ -24,15 +24,15 @@ int main(){
     socklen_t size=sizeof(caller);
 
     //Socket UDP
-    socketUDP=socket(PF_INET, SOCK_DGRAM, 0);
+    socketUDP=socket(PF_INET, SOCK_DGRAM, 0); //creazione socket udp per le notifiche
     
     while(1){
         int *sockCaller=(int *)malloc(sizeof(int));
-        *sockCaller=accept(sock, (struct sockaddr *)&caller, &size);
+        *sockCaller=accept(sock, (struct sockaddr *)&caller, &size); //creazione socket dedicato al client
         if (*sockCaller >= 0){
             printf("[LOG] nuova connessione (%s)\n", inet_ntoa(caller.sin_addr));
             pthread_t t1;
-            pthread_create(&t1, NULL, client_handler, sockCaller);
+            pthread_create(&t1, NULL, client_handler, sockCaller); //creazone thread indipendente dedicato al client in client_handler
             pthread_detach(t1); 
         }
     }
@@ -86,7 +86,6 @@ void* client_handler(void* socket_desc){
             break;
 
             case 3:
-            //TODO FRIE
             printf("[PARSER] messaggio FRIE? ricevuto\n");
             if (frie(buf, index) == -1){
                 fprintf(stderr, "[FRIE?] richiesta di amicizia fallita\n");
@@ -94,7 +93,6 @@ void* client_handler(void* socket_desc){
             break;
 
             case 4:
-            //TODO MESS
             printf("[PARSER] messaggio MESS? ricevuto\n");
             if (mess(buf, index) == -1){
                 fprintf(stderr, "[MESS?] invio messaggio fallito\n");
@@ -102,7 +100,6 @@ void* client_handler(void* socket_desc){
             break;
 
             case 5:
-            //TODO FLOO
             printf("[PARSER] messaggio FLOO? ricevuto\n");
             if (floo(buf,index) == -1){
                 fprintf(stderr, "[FLOO?] invio messaggio flooding fallito\n");
@@ -118,7 +115,6 @@ void* client_handler(void* socket_desc){
             break;
             
             case 7:
-            //TODO CONSU
             printf("[PARSER] messaggio CONSU ricevuto\n");
             consu(*sock,index);
             break;
