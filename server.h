@@ -59,13 +59,13 @@ void send_udp_notification(int userIndex);
 int find_user_index(char* id);
 
 //Funzione per verificare la registrazione (restituisce l'indice o -1)
-int regis(int, char*);
+int regis(int, char*, int);
 
 //Funzione per verificare la connessione (restituisce l'indice o -1)
-int conne(int, char*);
+int conne(int, char*, int);
 
 //Funzione per verificare la richiesta d'amicizia
-int frie(char*, int);
+int frie(char*, int, int);
 
 //Funzione per verificare l'invio di un messaggio a un amico
 int mess(char* , int);

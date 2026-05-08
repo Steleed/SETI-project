@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
     free(tmp);
     id->MDP=htole16(p); //Password client
     id->num_notifications=0; //Numero di notifiche ricevute
-    id->notifications=NULL; //Lista notifiche ricevute
+    id->log=NULL;
     system("clear");
     
 
@@ -32,6 +32,8 @@ int main(int argc, char* argv[]){
     
     pthread_mutex_init(&id->mtx, NULL); //Inizializzazione mutex
     
+    id->log=fopen("logClient.txt", "w");
+
     int start=print_intro();
     switch (start)
         {
@@ -55,6 +57,7 @@ int main(int argc, char* argv[]){
     pthread_detach(th1);
  
     int choice;
+    bool first_round = true;
     while (1){    
         sleep(1);
         system("clear");        
@@ -62,12 +65,13 @@ int main(int argc, char* argv[]){
         pthread_mutex_lock(&id->mtx);
         if (id->num_notifications>0){
             printf("Hai %d notifiche\n", id->num_notifications);
+            id->num_notifications--;
         }
         pthread_mutex_unlock(&id->mtx);
         sleep(1);
         system("clear");
 
-        choice=print_menu();
+        choice=print_menu(&first_round);
         switch (choice)
         {
         case 1: 

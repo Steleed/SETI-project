@@ -17,7 +17,9 @@
 #define LENGTH_UDP_NOT 3 //Lunghezza (in byte) della notifica udp
 #define FORMAT_UDP_NOT "%d%c%c" //Formato notifica UDP
 #define MAX_PSWD 65535 //Numero massimo per password
+#define LENGTH_PSWD 2 //Lunghezza in byte della password nel messaggio
 #define MAX_USERS 100 //Numero massimo utenti
+#define MAX_BUF 2000 //lunghezza massima messaggio letto
 
 #define WELCO_HEADER "WELCO" //Header messaggio welcome
 #define FORMAT_WELCO "WELCO+++" //Formato messaggio welcome

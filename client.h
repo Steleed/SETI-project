@@ -3,13 +3,6 @@
 
 #include "project.h"
 
-//Struttura flusso di notifiche
-typedef struct Notifications{
-    int udp_notification_type; //Tipo notifica: '3'=Messaggio, '1'=Amicizia OK, '0'=Richiesta Amicizia, ecc.
-    struct Notifications *next;
-} Notifications;  
-
-
 // Struct identificativo client
 typedef struct{
     char ID[LENGTH_ID+1]; //Nome identificativo
@@ -17,10 +10,10 @@ typedef struct{
     uint16_t MDP; //Password in little-endian
     int fdTCP; //Socket TCP
     int fdUDP; //Socket UCP
-    Notifications* notifications; //Struttura contenente tutte le notifiche
     u_int16_t num_notifications; //Numero notifiche udp
     int messLength; //Lunghezza messaggio da inviare ad un amico/flood
     pthread_mutex_t mtx; //Mutex per le notifiche UDP
+    FILE *log; //File dove viene scritto il loge per ricezione messaggi
 } client_id;
 
 //Indirizzo ip del server
@@ -44,13 +37,16 @@ int print_intro();
 
 //Stampa il menu e chiede all'utente di selezionare un'opzione
 //Restituisce l'opzione (numero intero) selezionata
-int print_menu();
+int print_menu(bool *);
 
 //Invia richiesta REGIS al server
 void registration(client_id *);
 
 //Invia richiesta CONNE al server 
 void connection(client_id *);
+
+//Legge i messaggi TCP inviati dal server
+void read_all(client_id *, char *, int);
 
 //Invia richiesta FRIE? al server
 void friend(client_id *);
@@ -65,7 +61,7 @@ void floo(client_id*);
 void list(client_id*);
 
 //Legge la lista di utenti inviata dal server
-void read_list(int);
+void read_list(client_id *, int);
 
 //Invia richiesta IQUIT al server
 void iquit(client_id *);

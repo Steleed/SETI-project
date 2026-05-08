@@ -93,8 +93,12 @@ int print_intro(){
     return n;
 }
 
-int print_menu(){
+int print_menu(bool *first_round){
     puts("Scegli una tra le seguenti opzioni e digita il numero a essa associato\n1. Richiedi amicizia\n2. Manda messaggio\n3. Manda flood\n4. Visualizza elenco utenti\n5. Consulta le notifiche\n6. Disconnettiti\n");
+    if (*first_round){
+        puts("\nMentre eri offline avresti potuto ricevere nuove notifiche! Premi 5 per consultare.\n\n");
+        *first_round = false;
+    }
     int n;
     char* tmp=malloc(100*sizeof(char));
     fgets(tmp, 100, stdin);
@@ -102,6 +106,25 @@ int print_menu(){
     free(tmp);
     system("clear");
     return n;
+}
+
+void read_all(client_id *id, char *buf, int length){
+    int total = 0;
+    int r;
+    while (total < length) {
+        char c;
+        r = read(id->fdTCP, &c, 1);
+        if (r <= 0){
+            fprintf(id->log, "[LOG]: Errore in lettura\n");
+            close(id->fdTCP);
+            close(id->fdUDP);
+            fclose(id->log);
+            free(id);
+            exit(EXIT_FAILURE);
+        }
+        buf[total++] = c;
+        buf[total] = '\0';
+    }
 }
 
 //Funzione ausiliaria per mandare messaggio tcp al server
@@ -123,7 +146,7 @@ void sendTcp(client_id* id, char* mess){
     }
     else if (strncmp(mess, LIST_HEADER, LENGTH_HEADER) == 0){
         write(id->fdTCP, mess, LENGTH_LIST);
-        read_list(id->fdTCP);
+        read_list(id, id->fdTCP);
         return;
     }
     else if (strncmp(mess, IQUIT_HEADER, LENGTH_HEADER) ==0 ){
@@ -136,21 +159,15 @@ void sendTcp(client_id* id, char* mess){
     }
 
     char buf[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
-    int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL); //lettura risposta server
-    buf[r]='\0';
+    //int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL); //lettura risposta server
+    //buf[r]='\0';
+    read_all(id, buf, LENGTH_HEADER + LENGTH_END_SYMBOL);
     printf("[LOG]%s\n", buf);
+    fprintf(id->log, "[LOG]: %s\n", buf); //Scrittura log su file
 
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
-        if (id->num_notifications != 0){
-            Notifications* aux=id->notifications;
-            Notifications* del=NULL;
-            while (aux != NULL){
-                del=aux;
-                aux=aux->next;
-                free(del);
-            }
-        }
+        fclose(id->log);
         free(id);
         free(mess);
         exit(EXIT_SUCCESS);
@@ -296,22 +313,22 @@ void floo(client_id* id){
     getchar();
 }
 
-void read_list(int fd){
+void read_list(client_id *id, int fd){
     char buf[LENGTH_RLIST+1];
-    int r=read(fd, buf, LENGTH_RLIST);
-    buf[r]='\0';
+    read_all(id, buf, LENGTH_RLIST);
     int num_users;
     printf("[LOG]%s\n", buf);
+    fprintf(id->log, "[LOG]: %s\n", buf);
     sscanf(buf, FORMAT_RLIST, &num_users); //lettura numero utenti
     printf("Lettura lista di %d utenti:\n", num_users);
     char usr[LENGTH_LINUM+1];
-    char id[LENGTH_ID+1];
+    char id_usr[LENGTH_ID+1];
     for (int i=0;i<num_users;i++){
-        r=read(fd, usr, LENGTH_LINUM); //lettura utenti
-        usr[r]='\0';
-        printf("[LOG]%s\n", usr);
-        sscanf(usr, FORMAT_LINUM, id);
-        printf("%s\n", id);
+        read_all(id, usr, LENGTH_LINUM); //lettura utenti
+        //printf("[LOG]%s\n", usr);
+        fprintf(id->log, "[LOG]: %s\n", usr);
+        sscanf(usr, FORMAT_LINUM, id_usr);
+        printf("%s\n", id_usr);
         
     }
     printf("\nPremi INVIO per continuare...");
@@ -332,7 +349,7 @@ void list(client_id* id){
 }
 
 //Funzione ausiliaria per accettare/rifiutare la richiesta d'amicizia
-void friend_request(int fd){
+void friend_request(client_id *id){
     char* tmp=malloc(100*sizeof(char));
     int p;
     do{
@@ -342,15 +359,14 @@ void friend_request(int fd){
     while (p != 1 && p != 2);
     free(tmp);
     if (p == 1){
-        write(fd, FORMAT_OKIRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
+        write(id->fdTCP, FORMAT_OKIRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
     }
     else{
-        write(fd, FORMAT_NOKRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
+        write(id->fdTCP, FORMAT_NOKRF, LENGTH_HEADER+LENGTH_END_SYMBOL);
     }
     char ack[LENGTH_HEADER+LENGTH_END_SYMBOL+1];
-    int r=read(fd, ack, LENGTH_HEADER+LENGTH_END_SYMBOL);
-    ack[r]='\0';
-    printf("[LOG]%s\n", ack);
+    read_all(id, ack, LENGTH_HEADER+LENGTH_END_SYMBOL);
+    fprintf(id->log, "[LOG]: %s\n", ack);
 }
 
 //Funzione ausiliaria per costruire messaggio consu
@@ -367,64 +383,72 @@ void consu(client_id* id){
 }
 
 void read_consu(client_id *id){
-    char buf[503];
-    int r=read(id->fdTCP, buf, 503);
-    buf[r]='\0';
-    printf("[LOG]%s\n", buf);
-    pthread_mutex_lock(&id->mtx);
-    if (id->notifications == 0){
-        printf("Non ci sono flussi da consultare\n");
-        pthread_mutex_unlock(&id->mtx);
-        return;
+    //TODO eliminare struttura dati notifiche e fare in modo di riceverle da offline
+    char buf[MAX_BUF+1];  //Massima lunghezza del buffer, per evitare messaggi che non terminano mai con +++
+    int total = 0;
+    int r;
+    while (total < MAX_BUF - 1) {
+        char c;
+        r = read(id->fdTCP, &c, 1);
+        if (r == 0){
+            system("clear");
+            fprintf(id->log, "[LOG]: Connessione persa\n");
+            close(id->fdTCP);
+            close(id->fdUDP);
+            fclose(id->log);
+            free(id);
+            exit(EXIT_FAILURE);
+        }
+        buf[total++] = c;
+        buf[total] = '\0';
+        if (total >= LENGTH_END_SYMBOL && strcmp(buf + total - LENGTH_END_SYMBOL, END_SYMBOL) == 0) {
+            fprintf(id->log, "[LOG]: CONSU RICEVUTO: %s\n", buf);
+            break;
+        }
     }
-    char ID[LENGTH_ID+1];
-    switch (id->notifications->udp_notification_type)
-    {
-    case 0: 
-        sscanf(buf, FORMAT_FLUX_FRIE, ID);
-        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
-        friend_request(id->fdTCP);
-        break;
-    
+    char type_notification[LENGTH_HEADER+1];
+    strncpy(type_notification, buf, LENGTH_HEADER);
+    type_notification[LENGTH_HEADER] = '\0';
 
-    case 1: 
-        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
-        ID[LENGTH_ID]='\0';
-        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", ID);
-        break;
-    
 
-    case 2: 
-        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
-        ID[LENGTH_ID]='\0';
-        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", ID);        
-        break;
-    
-    
-    case 3: 
-        char mess[MAX_MESS+LENGTH_END_SYMBOL+1];
-        sscanf(buf, "SSEM> %8s %[^+]200[^+]+++", ID, mess);
+    if (strcmp(type_notification, FLUX_MESS_HEADER) == 0){
+        strtok(buf, " ");
+        char *ID=strtok(NULL, " ");
+        char *mess=strtok(NULL, "+");
         printf("Messaggio da parte di %s:\n%s", ID, mess);
-        break;
-    
-    
-    case 4: 
-        char floo[MAX_MESS+1];
-        sscanf(buf, "OOLF> %8s %200[^+]+++", ID, floo);
-        printf("Messaggio di flooding da parte di %s:\n%s", ID, floo);
-        break;
-    
-    
-    default: 
-        printf("Comportamento indefinito\n");        
-        pthread_mutex_unlock(&id->mtx);
-        return;
     }
-    //Cancello notifica consultata
-    Notifications* aux=id->notifications;
-    id->notifications=aux->next;
-    id->num_notifications--;
-    free(aux);
+    else if (strcmp(type_notification, FLUX_FLOO_HEADER) == 0){
+        strtok(buf, " ");
+        char *ID=strtok(NULL, " ");
+        char *mess=strtok(NULL, "+");
+        printf("Messaggio di inondazione da parte di %s:\n%s", ID, mess);
+    }
+    else if (strcmp(type_notification, FLUX_FRIE_HEADER) ==0){
+        strtok(buf, " ");
+        char *ID=strtok(NULL, "+");
+        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
+        friend_request(id);
+    }
+    else if (strcmp(type_notification, FRIEN_HEADER) ==0){
+        strtok(buf, " ");
+        char *ID=strtok(NULL, "+");
+        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", ID);
+    }
+    else if (strcmp(type_notification, NOFRI_HEADER) ==0){
+        strtok(buf, " ");
+        char *ID=strtok(NULL, "+");
+        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", ID);
+    }
+    else if (strcmp(buf, FORMAT_NOCON) ==0){
+        printf("Non ci sono flussi da cosnultare\n");
+    }
+    else {
+        fprintf(stderr, "Messaggio sconosciuto\n");
+    }
+
+    pthread_mutex_lock(&id->mtx);
+    if (id->num_notifications >0)
+        id->num_notifications--;
     pthread_mutex_unlock(&id->mtx);
     printf("\nPremi INVIO per continuare...");
     getchar();
@@ -442,28 +466,28 @@ void iquit(client_id* id){
     sendTcp(id, mess);
 }
 
-//Funzione ausiliaria per inserire la notifica nella struttura dati
-void insert_notification(client_id* id, char *buf){
-    pthread_mutex_lock(&id->mtx);
-    int type = buf[0]-'0'; //Tipo notifica udp
-    unsigned char b1 = (unsigned char) buf[1];
-    unsigned char b2 = (unsigned char) buf[2];
-    u_int16_t n = (b2 << 8) | b1;
-    id->num_notifications = n;
-    Notifications* new=malloc(sizeof(Notifications));
-    new->udp_notification_type=type;
-    new->next=NULL;
-    if (id->notifications == NULL){
-        id->notifications=new;
+void manage_udp_notification(int *type){
+    switch (*type)
+    {
+    case 0:
+        printf("Nuova richiesta d'amicizia\n");
+        break;
+
+    case 1 || 2:
+        printf("Nuova notifica amicizia\n");
+        break;
+    
+    case 3:
+        printf("Nuovo messaggio da leggere\n");
+        break;
+
+    case 4:
+        printf("Nuovo messaggio di inondazione da leggere\n");
+        break;
+    default:
+        fprintf(stderr, "Numero notifica sconosciuto");
+        break;
     }
-    else{
-        Notifications *aux=id->notifications;
-        while (aux->next != NULL){
-            aux=aux->next;
-        }
-        aux->next=new;
-    }
-    pthread_mutex_unlock(&id->mtx);
 }
 
 void* udp_listen(void* ptr){
@@ -480,7 +504,13 @@ void* udp_listen(void* ptr){
         char sender_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &server.sin_addr, sender_ip, sizeof(sender_ip));
         if (strcmp(ip_server, sender_ip) == 0){//Controllo che sia stato il server a inviare
-            insert_notification(id, buf);
+            int type = buf[0] - '0';
+            u_int8_t b1 = buf[1];
+            u_int8_t b2 = buf[2];
+            pthread_mutex_lock(&id->mtx);
+            id->num_notifications = (b2 << 8) | b1;
+            pthread_mutex_unlock(&id->mtx);
+            manage_udp_notification(&type);
         }
     }
 }

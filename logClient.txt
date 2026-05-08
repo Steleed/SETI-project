@@ -1,0 +1,6 @@
+[LOG]: HELLO+++
+[LOG]: CONSU RICEVUTO: NOCON+++
+[LOG]: RLIST 002+++
+[LOG]: LINUM gisipisi+++
+[LOG]: LINUM sgabello+++
+[LOG]: GOBYE+++

@@ -1,0 +1,90 @@
+//Struttura flusso di notifiche
+typedef struct Notifications{
+    int udp_notification_type; //Tipo notifica: '3'=Messaggio, '1'=Amicizia OK, '0'=Richiesta Amicizia, ecc.
+    struct Notifications *next;
+} Notifications;  
+
+//Funzione ausiliaria per inserire la notifica nella struttura dati
+void insert_notification(client_id* id, char *buf){
+    pthread_mutex_lock(&id->mtx);
+    int type = buf[0]-'0'; //Tipo notifica udp
+    unsigned char b1 = (unsigned char) buf[1];
+    unsigned char b2 = (unsigned char) buf[2];
+    u_int16_t n = (b2 << 8) | b1;
+    id->num_notifications = n;
+    Notifications* new=malloc(sizeof(Notifications));
+    new->udp_notification_type=type;
+    new->next=NULL;
+    if (id->notifications == NULL){
+        id->notifications=new;
+    }
+    else{
+        Notifications *aux=id->notifications;
+        while (aux->next != NULL){
+            aux=aux->next;
+        }
+        aux->next=new;
+    }
+    pthread_mutex_unlock(&id->mtx);
+}
+
+
+char buf[503];
+    int r=read(id->fdTCP, buf, 503);
+    buf[r]='\0';
+    printf("[LOG]%s\n", buf);
+    pthread_mutex_lock(&id->mtx);
+    if (id->notifications == 0){
+        printf("Non ci sono flussi da consultare\n");
+        pthread_mutex_unlock(&id->mtx);
+        return;
+    }
+    char ID[LENGTH_ID+1];
+    switch (id->notifications->udp_notification_type)
+    {
+    case 0: 
+        sscanf(buf, FORMAT_FLUX_FRIE, ID);
+        printf("Richiesta d'amicizia da parte dell'utente %s.\n1: Accetta\n2: Rifiuta\n\n", ID);
+        friend_request(id->fdTCP);
+        break;
+    
+
+    case 1: 
+        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
+        ID[LENGTH_ID]='\0';
+        printf("L'utente %s ha accettato la tua richiesta d'amicizia\n", ID);
+        break;
+    
+
+    case 2: 
+        strncpy(ID, buf+LENGTH_HEADER+1, LENGTH_ID);
+        ID[LENGTH_ID]='\0';
+        printf("L'utente %s ha rifiutato la tua richiesta d'amicizia\n", ID);        
+        break;
+    
+    
+    case 3: 
+        char mess[MAX_MESS+LENGTH_END_SYMBOL+1];
+        sscanf(buf, "SSEM> %8s %[^+]200[^+]+++", ID, mess);
+        printf("Messaggio da parte di %s:\n%s", ID, mess);
+        break;
+    
+    
+    case 4: 
+        char floo[MAX_MESS+1];
+        sscanf(buf, "OOLF> %8s %200[^+]+++", ID, floo);
+        printf("Messaggio di flooding da parte di %s:\n%s", ID, floo);
+        break;
+    
+    
+    default: 
+        printf("Comportamento indefinito\n");        
+        pthread_mutex_unlock(&id->mtx);
+        return;
+    }
+    //Cancello notifica consultata
+    Notifications* aux=id->notifications;
+    id->notifications=aux->next;
+    id->num_notifications--;
+    free(aux);
+    pthread_mutex_unlock(&id->mtx);

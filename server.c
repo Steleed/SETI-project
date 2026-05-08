@@ -44,28 +44,37 @@ void* client_handler(void* socket_desc){
     int p;
     int index=-1; //Indice restituito dalle funzioni regis/conne
     while (1){
-        char buf[500];
-        int r=read(*sock, buf, 500);
-        if (r==0){
-            printf("[LOG] CONNESSIONE PERSA \n");
-            free(sock);
-            return NULL;
+        char buf[MAX_BUF+1];  //Massima lunghezza del buffer, per evitare messaggi che non terminano mai con +++
+        int total = 0;
+        int r;
+        while (total < MAX_BUF - 1) {
+            char c;
+            r = read(*sock, &c, 1); //Per gestire meglio il terminatore (+++) preferiamo leggere un byte (char) per volta
+            if (r == 0){
+                printf("[LOG] Connessione persa\n");
+                close(*sock);
+                return NULL;
+            }
+            buf[total++] = c;
+            buf[total] = '\0';
+            if (total >= LENGTH_END_SYMBOL && strcmp(buf + total - LENGTH_END_SYMBOL, END_SYMBOL) == 0) {
+                printf("[LOG] MESSAGGIO RICEVUTO: ");
+                break;
+            }
         }
-        buf[r]='\0';
-        printf("[LOG] MESSAGGIO RICEVUTO: ");
-        for (int i=0; i<r; i++){
+        for (int i=0; i<total; i++){
             if (buf[i] >= 32 && buf[i] <= 126)
                 printf("%c", buf[i]);
             else 
                 printf("\\x%02X", (unsigned char)buf[i]);
         }
         printf("\n[LOG] Inizio parsing messaggio\n");
-        p=parser(buf, r);
+        p=parser(buf, total);
         switch (p)
         {
             case 1:
             printf("[PARSER] messaggio REGIS ricevuto\n");
-            index=regis(*sock,buf);
+            index=regis(*sock,buf,total);
             if (index == -1){
                 fprintf(stderr, "[REGIS] registrazione fallita\n");
                 close(*sock);
@@ -76,7 +85,7 @@ void* client_handler(void* socket_desc){
 
             case 2:
             printf("[PARSER] messaggio CONNE ricevuto\n");
-            index=conne(*sock, buf);
+            index=conne(*sock, buf, total);
             if (index == -1){
                 fprintf(stderr, "[CONNE] connessione fallita\n");
                 close(*sock);
@@ -87,7 +96,7 @@ void* client_handler(void* socket_desc){
 
             case 3:
             printf("[PARSER] messaggio FRIE? ricevuto\n");
-            if (frie(buf, index) == -1){
+            if (frie(buf, index, total) == -1){
                 fprintf(stderr, "[FRIE?] richiesta di amicizia fallita\n");
             }
             break;
