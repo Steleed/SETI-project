@@ -1,6 +1,4 @@
 [LOG]: HELLO+++
-[LOG]: CONSU RICEVUTO: NOCON+++
-[LOG]: RLIST 002+++
-[LOG]: LINUM gisipisi+++
-[LOG]: LINUM sgabello+++
+[LOG]: CONSU RICEVUTO: EIRF> comozino+++
+[LOG]: ACKRF+++
 [LOG]: GOBYE+++

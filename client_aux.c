@@ -162,7 +162,7 @@ void sendTcp(client_id* id, char* mess){
     //int r=read(id->fdTCP, buf, LENGTH_HEADER+LENGTH_END_SYMBOL); //lettura risposta server
     //buf[r]='\0';
     read_all(id, buf, LENGTH_HEADER + LENGTH_END_SYMBOL);
-    printf("[LOG]%s\n", buf);
+    //printf("[LOG]%s\n", buf);
     fprintf(id->log, "[LOG]: %s\n", buf); //Scrittura log su file
 
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
@@ -170,6 +170,7 @@ void sendTcp(client_id* id, char* mess){
         fclose(id->log);
         free(id);
         free(mess);
+        puts("GOODBYE");
         exit(EXIT_SUCCESS);
     }//feedback
     if (strcmp(buf, FORMAT_OKFRIE) == 0){
@@ -317,7 +318,7 @@ void read_list(client_id *id, int fd){
     char buf[LENGTH_RLIST+1];
     read_all(id, buf, LENGTH_RLIST);
     int num_users;
-    printf("[LOG]%s\n", buf);
+    //printf("[LOG]%s\n", buf);
     fprintf(id->log, "[LOG]: %s\n", buf);
     sscanf(buf, FORMAT_RLIST, &num_users); //lettura numero utenti
     printf("Lettura lista di %d utenti:\n", num_users);

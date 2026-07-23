@@ -125,14 +125,14 @@ int conne(int sock, char* buffer, int length){
     char id[LENGTH_ID+1];
     uint16_t password;
     //?DEBUG
-    printf("DEBUG: CONNE + LENGTH_HEADER = %c\n", buffer[LENGTH_HEADER]);
+    //?printf("DEBUG: CONNE + LENGTH_HEADER = %c\n", buffer[LENGTH_HEADER]);
     if (strncmp(buffer + LENGTH_HEADER, " ", 1) != 0){
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
         return -1;
     }
     char *tst = strtok(buffer, " ");
     //?DEBUG
-    printf("DEBUG: strtok CONNE = %s\n", tst);
+    //?printf("DEBUG: strtok CONNE = %s\n", tst);
     if ((unsigned)strlen(strtok(NULL, " ")) != LENGTH_ID){
         sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, sock);
         return -1;
