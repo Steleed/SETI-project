@@ -1,4 +1,0 @@
-[LOG]: HELLO+++
-[LOG]: CONSU RICEVUTO: EIRF> comozino+++
-[LOG]: ACKRF+++
-[LOG]: GOBYE+++

@@ -1,27 +1,40 @@
 #include "client.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
 
 bool check_args(int argc, char* argv[], client_id* id){ //verifica degli argomenti
-    if (argc != 5)  return false;
-    if (strcmp(argv[1],"-i") == 0){
-        if (strlen(argv[2]) != LENGTH_ID)
+    if (argc != 5 && argc != 7)  return false;
+
+    bool has_id = false;
+    bool has_port = false;
+    bool has_server_ip = false;
+    for (int i = 1; i < argc; i += 2){
+        if (strcmp(argv[i], "-i") == 0 && !has_id){
+            if (strlen(argv[i + 1]) != LENGTH_ID)
+                return false;
+            strcpy(id->ID, argv[i + 1]);
+            has_id = true;
+        }
+        else if (strcmp(argv[i], "-p") == 0 && !has_port){
+            if (strlen(argv[i + 1]) != LENGTH_UDP_PORT)
+                return false;
+            strcpy(id->PORT, argv[i + 1]);
+            has_port = true;
+        }
+        else if (strcmp(argv[i], "-s") == 0 && !has_server_ip){
+            struct in_addr server_address;
+            if (inet_pton(AF_INET, argv[i + 1], &server_address) != 1)
+                return false;
+            strcpy(ip_server, argv[i + 1]);
+            has_server_ip = true;
+        }
+        else{
             return false;
-        strcpy(id->ID, argv[2]); //Identificativo client
-        if (strcmp(argv[3],"-p") != 0 || strlen(argv[4]) != LENGTH_UDP_PORT)
-            return false;
-        strcpy(id->PORT, argv[4]); //Porta UDP client
-        return true;
+        }
     }
-    else if (strcmp(argv[1],"-p")==0){
-    if (strlen(argv[2]) != LENGTH_UDP_PORT)
-        return false;
-    strcpy(id->PORT, argv[2]); // porta è argv[2]
-    if (strcmp(argv[3],"-i") != 0 || strlen(argv[4]) != LENGTH_ID)
-        return false;
-    strcpy(id->ID, argv[4]); // ID è argv[4]
-    return true;
-    }
-    else
-        return false;
+
+    return has_id && has_port;
 }
 
 bool check_MPD(const int *p){
@@ -29,31 +42,77 @@ bool check_MPD(const int *p){
 }
 
 int tcpSock(client_id* id){ //inizializzazione socket tcp e connessione al server
+    const int connect_timeout_ms = 3000;
     struct sockaddr_in address_sock_tcp;
     address_sock_tcp.sin_family=AF_INET;
     address_sock_tcp.sin_port=htons(6769);
 
-    FILE *ip=fopen("ip.txt", "r"); //lettura ip dal file per flessibilità
-    if (ip == NULL){
-        fprintf(stderr, "IP server non valido\n");
+    if (inet_pton(AF_INET, ip_server, &address_sock_tcp.sin_addr) != 1){
+        fprintf(stderr, "Indirizzo IPv4 del server non valido: %s\n", ip_server);
         free(id);
         return -1;
     }
-    fgets(ip_server, INET_ADDRSTRLEN, ip);
-    fclose(ip);
 
-    inet_aton(ip_server, &address_sock_tcp.sin_addr);
     id->fdTCP=socket(PF_INET, SOCK_STREAM, 0);
-    if (id->fdTCP == EOF){
+    if (id->fdTCP < 0){
         perror("Errore socket");
         free(id);
         return -1;
     }
 
     puts("Connessione al server");
-    sleep(1.5);
-    if (connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
+    int socket_flags = fcntl(id->fdTCP, F_GETFL, 0);
+    if (socket_flags < 0 || fcntl(id->fdTCP, F_SETFL, socket_flags | O_NONBLOCK) < 0){
+        perror("Errore configurazione socket");
+        close(id->fdTCP);
+        free(id);
+        return -1;
+    }
+
+    int connect_result = connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp));
+    if (connect_result < 0 && errno == EINPROGRESS){
+        struct pollfd socket_poll = {
+            .fd = id->fdTCP,
+            .events = POLLOUT
+        };
+        int poll_result = poll(&socket_poll, 1, connect_timeout_ms);
+        if (poll_result == 0){
+            errno = ETIMEDOUT;
+            connect_result = -1;
+        }
+        else if (poll_result < 0){
+            connect_result = -1;
+        }
+        else{
+            int socket_error = 0;
+            socklen_t error_length = sizeof(socket_error);
+            if (getsockopt(id->fdTCP, SOL_SOCKET, SO_ERROR, &socket_error, &error_length) < 0){
+                connect_result = -1;
+            }
+            else if (socket_error != 0){
+                errno = socket_error;
+                connect_result = -1;
+            }
+            else{
+                connect_result = 0;
+            }
+        }
+    }
+
+    int connection_error = errno;
+    if (fcntl(id->fdTCP, F_SETFL, socket_flags) < 0){
+        if (connect_result == 0){
+            perror("Errore ripristino socket");
+            close(id->fdTCP);
+            free(id);
+            return -1;
+        }
+    }
+
+    if (connect_result < 0){
+        errno = connection_error;
         perror("Errore di connessione");
+        close(id->fdTCP);
         free(id);
         return -1;
     }
@@ -62,7 +121,7 @@ int tcpSock(client_id* id){ //inizializzazione socket tcp e connessione al serve
         sleep(1);
         system("clear");
     }
-    inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server)); //salva l'ip del server
+    inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server));
     return 0;
 }
 

@@ -21,16 +21,20 @@ IPortbook è un sistema di social network implementato in C che consente a più 
 
 ```
 SETI-project/
-├── client.c                 # Main del client
-├── client.h                 # Header del client
-├── client_aux.c             # Funzioni ausiliarie del client
-├── server.c                 # Main del server
-├── server.h                 # Header del server
-├── server_aux.c             # Funzioni ausiliarie del server
-├── project.h                # Costanti e definizioni condivise
-├── ip.txt                   # Indirizzo IP del server
-├── logClient.txt            # Log delle operazioni del client
-└── README.md                # Questo file
+├── client/                  # Sorgenti e header del client
+│   ├── client.c
+│   ├── client.h
+│   ├── client_aux.c
+│   └── logClient.txt         # Log delle operazioni del client
+├── server/                  # Sorgenti e header del server
+│   ├── server.c
+│   ├── server.h
+│   └── server_aux.c
+├── include/
+│   └── project.h            # Costanti e definizioni condivise
+├── build/                   # Eseguibili generati da make
+├── Makefile
+└── readme.md                # Questo file
 ```
 
 ### Componenti principali
@@ -53,43 +57,54 @@ SETI-project/
 - GCC (GNU C Compiler)
 - Linux (il progetto usa librerie POSIX)
 
-### Compilazione manuale
+### Compilazione
 
-**Client:**
+Compilare client e server insieme:
 ```bash
-gcc -o client client.c client_aux.c -lpthread
+make
 ```
 
-**Server:**
+Per compilare un solo componente:
 ```bash
-gcc -o server server.c server_aux.c -lpthread
+make client
+make server
+```
+
+Gli eseguibili vengono creati in `build/client` e `build/server`. Per rimuoverli:
+```bash
+make clean
 ```
 
 ### Esecuzione
 
 **1. Avviare il server (su una porta TCP):**
 ```bash
-./server
+./build/server
 ```
 Il server si mette in ascolto sulla porta TCP 6769 e crea dinamicamente un socket UDP per inviare notifiche.
 
-**2. Configurare l'IP del server:**
-Creare un file `ip.txt` contenente l'indirizzo IP del server:
-```
-127.0.0.1 per farlo girare in localhost usando più terminali
-```
-
-**3. Avviare il/i client:**
+**2. Avviare il/i client:**
 ```bash
-./client -i IDclient -p portaUDP
+./build/client -i IDclient -p portaUDP [-s IP_SERVER]
 ```
-ID e porta devono essere lunghi rispattivamente 8 e 4 caratteri
+ID e porta devono essere lunghi rispettivamente 8 e 4 caratteri. L'opzione
+`-s` indica l'indirizzo IPv4 del server ed è facoltativa: se omessa, il client
+si connette a `127.0.0.1`. Il tentativo di connessione termina con errore dopo
+3 secondi se il server non risponde.
 
 Esempio:
 ```bash
-./client -i alice123 -p 5000
-./client -i bob12345 -p 5001
+./build/client -i alice123 -p 5000
+./build/client -i bob12345 -p 5001
 ```
+
+Per collegarsi a un server su un altro host:
+```bash
+./build/client -i alice123 -p 5000 -s 192.168.1.10
+```
+
+Eseguire i comandi dalla root del progetto; il client scrive il log in
+`client/logClient.txt`.
 
 ---
 
@@ -194,7 +209,6 @@ Bob (consultando): Riceve richiesta amicizia
 ```
 Quando Alice invia messaggio a Bob offline:
   → Messaggio salvato in "flussi pendenti" di Bob
-  → Notifica UDP inviata (Bob la riceve al riavvio UDP listener)
   → Al login di Bob, può consultare il messaggio con CONSU
 ```
 
@@ -236,7 +250,7 @@ byte2 = (password >> 8) & 0xFF;    // Byte più significativo
 ```
 
 ### Log
-- **Client**: Scrive in `logClient.txt` tutti i messaggi ricevuti
+- **Client**: Scrive in `client/logClient.txt` tutti i messaggi ricevuti
 - **Server**: Stampa in stdout i log di debug
 
 ---
@@ -263,7 +277,7 @@ byte2 = (password >> 8) & 0xFF;    // Byte più significativo
 
 ### Terminal 1 - Server
 ```bash
-$ ./server
+$ ./build/server
 [LOG] Listening on port 6769...
 [LOG] nuova connessione (127.0.0.1)
 [PARSER] messaggio REGIS ricevuto
@@ -272,7 +286,7 @@ $ ./server
 
 ### Terminal 2 - Client Alice
 ```bash
-$ ./client -i alice123 -p 5000
+$ ./build/client -i alice123 -p 5000
 Inserisci la password: 1234
 Benvenuto su IPortbook!
 1. Registrazione
@@ -295,7 +309,7 @@ alice123
 
 ### Terminal 3 - Client Bob
 ```bash
-$ ./client -i bob12345 -p 5001
+$ ./build/client -i bob12345 -p 5001
 Inserisci la password: 5678
 Benvenuto su IPortbook!
 > 1
@@ -316,7 +330,8 @@ Nuova richiesta d'amicizia (UDP notification ricevuta)
 
 ## ⚠️ Note Importanti
 
-1. **IP del server**: Configurare `ip.txt` con l'IP corretto (127.0.0.1 per localhost)
+1. **IP del server**: Usare `-s IP_SERVER` per un server remoto; per localhost
+   l'opzione può essere omessa (default `127.0.0.1`)
 2. **Porte UDP**: Assicurarsi che le porte non siano già in uso
 3. **Numero massimo client**: 100 per server (modificabile in `project.h`)
 4. **Messaggi offline**: Salvati fino a consultazione, non persistenti tra riavvii server
@@ -335,7 +350,7 @@ Consultare il file di specifica del progetto (PDF fornito) per:
 ---
 
 ## 👥 Autori
-Patrizio Giordano
+Patrizio Giordano -
 Davide Sinagra
 
 Progetto SETI 2025/2026 - Università di Genova
