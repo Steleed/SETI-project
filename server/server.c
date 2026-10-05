@@ -47,6 +47,10 @@ int main(){
             pthread_create(&t1, NULL, client_handler, sockCaller); //creazone thread indipendente dedicato al client in client_handler
             pthread_detach(t1); 
         }
+        else {
+            perror("errore client");
+            free(sockCaller);
+        }
     }
     return EXIT_SUCCESS;
 }
@@ -65,6 +69,7 @@ void* client_handler(void* socket_desc){
             if (r == 0){
                 printf("[LOG] Connessione persa\n");
                 close(*sock);
+                free(sock);
                 return NULL;
             }
             buf[total++] = c;
@@ -124,8 +129,8 @@ void* client_handler(void* socket_desc){
             printf("[PARSER] messaggio FLOO? ricevuto\n");
             if (floo(buf,index) == -1){
                 fprintf(stderr, "[FLOO?] invio messaggio flooding fallito\n");
-                close(*sock);
-                free(sock);
+                /*close(*sock);
+                free(sock);*/
             }
             break;
 
@@ -151,6 +156,7 @@ void* client_handler(void* socket_desc){
             printf("[PARSER] Messaggio non valido\n");
             sendTCP(FORMAT_GOBYE, LENGTH_HEADER+LENGTH_END_SYMBOL, *sock);
             close(*sock);
+            free(sock);
             return NULL;
         }
     }

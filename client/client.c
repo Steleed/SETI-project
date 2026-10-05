@@ -36,6 +36,10 @@ int main(int argc, char* argv[]){
     id->log=fopen("client/logClient.txt", "w");
     if (id->log == NULL){
         perror("Errore apertura log client");
+        close(id->fdTCP);
+        close(id->fdUDP);
+        pthread_mutex_destroy(&id->mtx);
+        free(id);
         return EXIT_FAILURE;
     }
 
@@ -53,6 +57,10 @@ int main(int argc, char* argv[]){
             break;
         default:
             fprintf(stderr, "ERRORE! Numero digitato fuori dal range consentito.\n");
+            close(id->fdTCP);
+            close(id->fdUDP);
+            fclose(id->log);
+            pthread_mutex_destroy(&id->mtx);
             free(id);
             return EXIT_FAILURE;
         }

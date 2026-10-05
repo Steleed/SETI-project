@@ -369,6 +369,7 @@ int floo(char* buffer, int index){
     floo_aux(index, visited, users[index].ID, mess);
     sendTCP(FORMAT_FLOO_ANSWER, LENGTH_HEADER+LENGTH_END_SYMBOL, users[index].socketTCP);
     printf("[FLOO] messaggio di flooding inviato\n");
+    free(visited);
     return 0;
 }
 

@@ -80,6 +80,7 @@ int tcpSock(client_id* id){ //inizializzazione socket tcp e connessione al serve
     sleep(1.5);
     if (connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
         perror("Errore di connessione");
+        close(id->fdTCP);
         free(id);
         return -1;
     }
@@ -102,6 +103,7 @@ int udpSock(client_id* id){ //inizializzazione socket udp per notifiche
     if(bind(id->fdUDP,(struct sockaddr *)&address_sock_udp,sizeof(struct sockaddr_in)) == EOF){
         perror("Errore binding udp");
         close(id->fdTCP);
+        close(id->fdUDP);
         free(id);
         return -1;
     }
@@ -197,6 +199,7 @@ void sendTcp(client_id* id, char* mess){
 
     if (strcmp(buf, FORMAT_GOBYE) == 0){ 
         close(id->fdUDP);
+        close(id->fdTCP);
         fclose(id->log);
         free(id);
         free(mess);
@@ -216,7 +219,7 @@ void sendTcp(client_id* id, char* mess){
         return;
     }
     if (strcmp(buf, FORMAT_NOMESS) == 0){
-        fprintf(stderr, "Messaggio non inviato, messaggio troppo lungo oppure il destinatario potrebbe non esistere o non essere tuo amico\n");
+        fprintf(stderr, "Messaggio non inviato, il destinatario potrebbe non esistere o non essere tuo amico\n");
         return;
     }
 }
@@ -282,11 +285,14 @@ void friend(client_id* id){
 }
 
 //Funzione ausiliaria per leggere il messaggio scritto in input
-void read_mess(char* str){
+void read_mess(char* str, size_t capacity){
     clear_screen();
     printf("Inserisci il messaggio da inviare: ");
-    fgets(str, 500, stdin);
-    if (strchr(str, '\n') == NULL) { //In caso di messaggio > 500
+    if (fgets(str, capacity, stdin) == NULL){
+        str[0] = '\0';
+        return;
+    }
+    if (strchr(str, '\n') == NULL) { //Scarta la parte eccedente della riga
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
     }
@@ -312,7 +318,7 @@ char* build_message_mess(const char* str, int length){
 
 void mess(client_id* id){
     char str[500];
-    read_mess(str);
+    read_mess(str, sizeof(str));
     id->messLength=strlen(str);
     char* mess=build_message_mess(str, id->messLength);
     if (mess == NULL){
@@ -333,8 +339,8 @@ char* build_message_floo(const char* str, int length){
 }
 
 void floo(client_id* id){
-    char str[200];
-    read_mess(str);
+    char str[MAX_MESS+1];
+    read_mess(str, sizeof(str));
     id->messLength=strlen(str);
     char* mess=build_message_floo(str, id->messLength);
     sendTcp(id, mess);
