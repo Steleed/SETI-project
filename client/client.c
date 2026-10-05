@@ -1,12 +1,13 @@
 #include "client.h"
 
 char ip_server[INET_ADDRSTRLEN] = "127.0.0.1";
+bool clear_screen_enabled = false;
 
 int main(int argc, char* argv[]){
     //Creazione struct identificatore cliente
     client_id *id=malloc(sizeof(client_id));
     if (!check_args(argc, argv, id)){
-        fprintf(stderr, "Usage: %s -i ID (8 caratteri) -p PORTA_UDP (4 caratteri) [-s IP_SERVER]\n", argv[0]);
+        fprintf(stderr, "Usage: %s -i ID -p PORTA_UDP [-s IP_SERVER] [-c|--clear]\n", argv[0]);
         free(id);
         return EXIT_FAILURE;
     }
@@ -22,7 +23,7 @@ int main(int argc, char* argv[]){
     id->MDP=htole16(p); //Password client
     id->num_notifications=0; //Numero di notifiche ricevute
     id->log=NULL;
-    system("clear");
+    clear_screen();
     
 
     //Socket + connessione per inviare messaggi sulla porta TCP
@@ -64,7 +65,7 @@ int main(int argc, char* argv[]){
     bool first_round = true;
     while (1){    
         sleep(1);
-        system("clear");        
+        clear_screen();
         //Controllo notifiche udp
         pthread_mutex_lock(&id->mtx);
         if (id->num_notifications>0){
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]){
         }
         pthread_mutex_unlock(&id->mtx);
         sleep(1);
-        system("clear");
+        clear_screen();
 
         choice=print_menu(&first_round);
         switch (choice)

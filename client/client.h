@@ -18,9 +18,13 @@ typedef struct{
 
 //Indirizzo ip del server
 extern char ip_server[INET_ADDRSTRLEN];
+extern bool clear_screen_enabled;
 
 //Controlla se l'utente ha inserito il numero giusto di argomenti
 bool check_args(int, char*[], client_id*);
+
+//Pulisce il terminale solo se è stata richiesta l'opzione -c/--clear
+void clear_screen(void);
 
 //Controlla se l'utente ha inserito la password nei limiti consentiti 
 bool check_MPD(const int*);

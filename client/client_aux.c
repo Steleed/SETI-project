@@ -4,23 +4,33 @@
 #include <poll.h>
 
 bool check_args(int argc, char* argv[], client_id* id){ //verifica degli argomenti
-    if (argc != 5 && argc != 7)  return false;
-
     bool has_id = false;
     bool has_port = false;
     bool has_server_ip = false;
-    for (int i = 1; i < argc; i += 2){
+    bool has_clear_option = false;
+    for (int i = 1; i < argc;){
+        if ((strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--clear") == 0) && !has_clear_option){
+            clear_screen_enabled = true;
+            has_clear_option = true;
+            i++;
+            continue;
+        }
+        if (i + 1 >= argc)
+            return false;
+
         if (strcmp(argv[i], "-i") == 0 && !has_id){
             if (strlen(argv[i + 1]) != LENGTH_ID)
                 return false;
             strcpy(id->ID, argv[i + 1]);
             has_id = true;
+            i += 2;
         }
         else if (strcmp(argv[i], "-p") == 0 && !has_port){
             if (strlen(argv[i + 1]) != LENGTH_UDP_PORT)
                 return false;
             strcpy(id->PORT, argv[i + 1]);
             has_port = true;
+            i += 2;
         }
         else if (strcmp(argv[i], "-s") == 0 && !has_server_ip){
             struct in_addr server_address;
@@ -28,6 +38,7 @@ bool check_args(int argc, char* argv[], client_id* id){ //verifica degli argomen
                 return false;
             strcpy(ip_server, argv[i + 1]);
             has_server_ip = true;
+            i += 2;
         }
         else{
             return false;
@@ -35,6 +46,11 @@ bool check_args(int argc, char* argv[], client_id* id){ //verifica degli argomen
     }
 
     return has_id && has_port;
+}
+
+void clear_screen(void){
+    if (clear_screen_enabled)
+        system("clear");
 }
 
 bool check_MPD(const int *p){
@@ -61,65 +77,16 @@ int tcpSock(client_id* id){ //inizializzazione socket tcp e connessione al serve
     }
 
     puts("Connessione al server");
-    int socket_flags = fcntl(id->fdTCP, F_GETFL, 0);
-    if (socket_flags < 0 || fcntl(id->fdTCP, F_SETFL, socket_flags | O_NONBLOCK) < 0){
-        perror("Errore configurazione socket");
-        close(id->fdTCP);
-        free(id);
-        return -1;
-    }
-
-    int connect_result = connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp));
-    if (connect_result < 0 && errno == EINPROGRESS){
-        struct pollfd socket_poll = {
-            .fd = id->fdTCP,
-            .events = POLLOUT
-        };
-        int poll_result = poll(&socket_poll, 1, connect_timeout_ms);
-        if (poll_result == 0){
-            errno = ETIMEDOUT;
-            connect_result = -1;
-        }
-        else if (poll_result < 0){
-            connect_result = -1;
-        }
-        else{
-            int socket_error = 0;
-            socklen_t error_length = sizeof(socket_error);
-            if (getsockopt(id->fdTCP, SOL_SOCKET, SO_ERROR, &socket_error, &error_length) < 0){
-                connect_result = -1;
-            }
-            else if (socket_error != 0){
-                errno = socket_error;
-                connect_result = -1;
-            }
-            else{
-                connect_result = 0;
-            }
-        }
-    }
-
-    int connection_error = errno;
-    if (fcntl(id->fdTCP, F_SETFL, socket_flags) < 0){
-        if (connect_result == 0){
-            perror("Errore ripristino socket");
-            close(id->fdTCP);
-            free(id);
-            return -1;
-        }
-    }
-
-    if (connect_result < 0){
-        errno = connection_error;
+    sleep(1.5);
+    if (connect(id->fdTCP, (struct sockaddr *)&address_sock_tcp, sizeof(address_sock_tcp))==EOF){
         perror("Errore di connessione");
-        close(id->fdTCP);
         free(id);
         return -1;
     }
     else{
         puts("Connessione stabilita");
         sleep(1);
-        system("clear");
+        clear_screen();
     }
     inet_ntop(AF_INET, &address_sock_tcp.sin_addr, ip_server, sizeof(ip_server));
     return 0;
@@ -146,6 +113,8 @@ int print_intro(){
     puts("Benvenuto su IPortbook!\nSe è la tua prima volta, premi 1 e registrati, altrimenti digita 2 per conneterti o 3 per uscire\n");
     int n;
     char* tmp=malloc(100*sizeof(char));
+    printf("> ");
+    fflush(stdout);
     fgets(tmp, 100, stdin);
     n=atoi(tmp);
     free(tmp);
@@ -160,10 +129,12 @@ int print_menu(bool *first_round){
     }
     int n;
     char* tmp=malloc(100*sizeof(char));
+    printf("> ");
+    fflush(stdout);
     fgets(tmp, 100, stdin);
     n=atoi(tmp);
     free(tmp);
-    system("clear");
+    clear_screen();
     return n;
 }
 
@@ -312,7 +283,7 @@ void friend(client_id* id){
 
 //Funzione ausiliaria per leggere il messaggio scritto in input
 void read_mess(char* str){
-    system("clear");
+    clear_screen();
     printf("Inserisci il messaggio da inviare: ");
     fgets(str, 500, stdin);
     if (strchr(str, '\n') == NULL) { //In caso di messaggio > 500
@@ -451,7 +422,7 @@ void read_consu(client_id *id){
         char c;
         r = read(id->fdTCP, &c, 1);
         if (r == 0){
-            system("clear");
+            clear_screen();
             fprintf(id->log, "[LOG]: Connessione persa\n");
             close(id->fdTCP);
             close(id->fdUDP);

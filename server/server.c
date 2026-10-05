@@ -12,12 +12,24 @@ int main(){
     address_sock.sin_port=htons(6769);
     address_sock.sin_addr.s_addr=htonl(INADDR_ANY);
     int sock=socket(PF_INET, SOCK_STREAM, 0); //creazione socket tcp
-    if (bind(sock, (struct sockaddr *)&address_sock, sizeof(struct sockaddr_in))==EOF){
-        perror("errore bind");
+    if (sock < 0){
+        perror("errore socket");
         return EXIT_FAILURE;
     }
-    if (listen(sock, 0)==EOF){ //ascolto del client 
+    int reuse_address = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_address, sizeof(reuse_address)) < 0){
+        perror("errore setsockopt");
+        close(sock);
+        return EXIT_FAILURE;
+    }
+    if (bind(sock, (struct sockaddr *)&address_sock, sizeof(struct sockaddr_in)) < 0){
+        perror("errore bind");
+        close(sock);
+        return EXIT_FAILURE;
+    }
+    if (listen(sock, 0) < 0){ //ascolto del client
         perror("errore server");
+        close(sock);
         return EXIT_FAILURE;
     }  
     struct sockaddr_in caller;

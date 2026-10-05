@@ -1,5 +1,2 @@
-[LOG]: WELCO+++
-[LOG]: CONSU RICEVUTO: NOCON+++
-[LOG]: RLIST 001+++
-[LOG]: LINUM sgabello+++
+[LOG]: HELLO+++
 [LOG]: GOBYE+++

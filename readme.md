@@ -85,12 +85,14 @@ Il server si mette in ascolto sulla porta TCP 6769 e crea dinamicamente un socke
 
 **2. Avviare il/i client:**
 ```bash
-./build/client -i IDclient -p portaUDP [-s IP_SERVER]
+./build/client -i IDclient -p portaUDP [-s IP_SERVER] [-c|--clear]
 ```
 ID e porta devono essere lunghi rispettivamente 8 e 4 caratteri. L'opzione
 `-s` indica l'indirizzo IPv4 del server ed è facoltativa: se omessa, il client
 si connette a `127.0.0.1`. Il tentativo di connessione termina con errore dopo
-3 secondi se il server non risponde.
+3 secondi se il server non risponde. L'opzione `-c` o `--clear` pulisce il
+terminale durante l'uso del client; se omessa, l'output rimane visibile nel
+terminale.
 
 Esempio:
 ```bash
@@ -101,6 +103,11 @@ Esempio:
 Per collegarsi a un server su un altro host:
 ```bash
 ./build/client -i alice123 -p 5000 -s 192.168.1.10
+```
+
+Per pulire il terminale mentre si usa il client:
+```bash
+./build/client -i alice123 -p 5000 --clear
 ```
 
 Eseguire i comandi dalla root del progetto; il client scrive il log in
